@@ -46,6 +46,8 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
 model.fit(x_train, y_train, epochs=3)
 
+
+
 # model.compile(optimizer=SGD(0.01),
 #               loss = 'categorical_crossentropy',
 #               metrics = ['accuracy'])
