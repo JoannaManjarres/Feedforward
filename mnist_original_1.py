@@ -36,20 +36,20 @@ model.add(tf.keras.layers.Dense(128, activation = tf.nn.relu))
 # model.add(tf.keras.layers.Dense(64, activation="sigmoid"))
 model.add(tf.keras.layers.Dense(10, activation=tf.nn.softmax))
 
-model.compile(optimizer ='adam',
-              loss ='categorical_crossentropy',
-              metrics = ['accuracy'])
+# model.compile(optimizer ='adam',
+#               loss ='categorical_crossentropy',
+#               metrics = ['accuracy'])
 
 ## codigo que funciona
-# model.compile(optimizer='adam',
-#               loss='sparse_categorical_crossentropy',
-#               metrics=['accuracy'])
-# model.fit(x_train, y_train, epochs=3)
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+model.fit(x_train, y_train, epochs=3)
 
 # model.compile(optimizer=SGD(0.01),
 #               loss = 'categorical_crossentropy',
 #               metrics = ['accuracy'])
-model.fit(x_train, y_train, epochs=3)
+# model.fit(x_train, y_train, epochs=3)
 # model.fit(x_train, y_train, batch_size=128, epochs=3, verbose=2,
 #          validation_data=(x_test, y_test))
 
