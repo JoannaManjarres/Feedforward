@@ -1,2 +1,3 @@
 final/data/processed/coord_input/coord_test.npz
 final/data/processed/coord_input/coord_train.npz
+exemplos/gps/data/processed/
