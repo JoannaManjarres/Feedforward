@@ -253,7 +253,8 @@ def select_best_beam(enableDebug=False):
         #          matriz_confusao = vector_matriz_confusion)
 
         # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
-        titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA ** \n Address Size " + str(address_size[j])
+        # titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA ** \n Address Size " + str(address_size[j])
+        titulo_mc = "matrix" +str(address_size[j])
         df_cm = pd.DataFrame(matriz_confusion_media, index=range(0, numero_de_grupos),
                              columns=range(0, numero_de_grupos))
         path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_mc + ".png"
