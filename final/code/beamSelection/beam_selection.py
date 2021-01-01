@@ -311,21 +311,14 @@ def select_best_beam(enableDebug=False):
 
 
 def create_keras_model(numero_de_salidas):
-    local_model = tf.keras.Sequential([
-        # tf.keras.layers.Flatten(input_shape=(5750,)),
-        tf.keras.layers.Dense(1, activation='relu'),
-        tf.keras.layers.Dense(numero_de_salidas)
-    ])
-    local_model.compile(optimizer='adam',
-                        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                        metrics=['accuracy'])
+    local_model = tf.keras.models.Sequential()
+    # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
+    local_model.add(tf.keras.layers.Dense(1, activation=tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(numero_de_salidas, activation=tf.nn.softmax))
 
-    # model = tf.keras.models.Sequential()
-    # model.add(tf.keras.layers.Dense(5750, activation=tf.nn.relu))
-    # model.add(tf.keras.layers.Flatten())
-    # model.add(tf.keras.layers.Dense(30, activation=tf.nn.relu))
-    # model.add(tf.keras.layers.Dense(1, activation=tf.nn.softmax))
-    # model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    local_model.compile(optimizer='adam',
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                  metrics=['accuracy'])
 
     return local_model
 
