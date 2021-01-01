@@ -19,8 +19,8 @@ mnist = tf.keras.datasets.mnist
 
 
 #normalizando as entradas
-x_train = tf.keras.utils.normalize(x_train, axis=1)
-x_test  = tf.keras.utils.normalize(x_test, axis=1)
+x_train1 = tf.keras.utils.normalize(x_train, axis=1)
+x_test1  = tf.keras.utils.normalize(x_test, axis=1)
 
 print("x_train = ",x_train.shape)
 print("y_train = ",y_train.shape)
