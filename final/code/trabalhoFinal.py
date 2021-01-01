@@ -77,5 +77,5 @@ def simple_network(input_train,label_train, input_validation, label_validation):
 
 input_train,input_validation = read_inputs(debug=False)
 label_train,label_validation = read_labels_data(debug=False)
-# simple_network(input_train,label_train, input_validation, label_validation)  
+simple_network(input_train,label_train, input_validation, label_validation)  
     
