@@ -14,6 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import confusion_matrix_pretty_print as pretty
+
 sys.path.append('../preProcessing/')
 from pre_processing_baseline_output import process_and_save_output_beams
 
@@ -65,25 +66,25 @@ def toc():
     return toc_s - tic_s
 
 
-def neural_network(data_train,
-                   label_train,
+def neural_network(x_train,
+                   y_train,
                    x_validation):
     global model
 
     print('\n Training NN ...')
     tic()
     # train using the input data
-    model.fit(data_train, label_train, epochs=5)
+    model.fit(x_train, y_train, epochs=5)
 
     tiempo_entrenamiento_ms = toc()
 
     print('\n Selecting Beams using NN ...')
     tic()
     # classify some data
-    salida_de_la_red = np.argmax(model.predict(x_validation), axis=-1)
+    y_validation = np.argmax(model.predict(x_validation), axis=-1)
     tiempo_test_ms = toc()
 
-    return salida_de_la_red, tiempo_entrenamiento_ms, tiempo_test_ms
+    return y_validation, tiempo_entrenamiento_ms, tiempo_test_ms
 
 
 def calular_acuracia(label_val, out_net):
@@ -168,8 +169,8 @@ def select_best_beam(enableDebug=False):
     global numero_de_grupos
 
     print('\n Reading pre-processed data ...')
-    input_train, input_validation = read_inputs(debug=enableDebug)  # coordenadas
-    label_train, label_validation, label_train1, label_validation1 = read_labels_data(debug=enableDebug)  #
+    coord_input_train, coord_input_validation = read_inputs(debug=enableDebug)  # coordenadas
+    coord_label_train, coord_label_validation, label_train1, label_validation1 = read_labels_data(debug=enableDebug)  #
 
     # config parameters
     if enableDebug:
@@ -206,9 +207,9 @@ def select_best_beam(enableDebug=False):
             print("   Experimento: " + str(i))
 
             # -----------------USA LA RED WIZARD -------------------
-            out_red, time_train, time_test = neural_network(input_train,
-                                                            label_train,
-                                                            input_validation)
+            coord_prediction, time_train, time_test = neural_network(coord_input_train,
+                                                                     coord_label_train,
+                                                                     coord_input_validation)
 
             vector_time_train.append(time_train)
             vector_time_test.append(time_test)
@@ -218,19 +219,17 @@ def select_best_beam(enableDebug=False):
             # nombre_arq_MC = "MC_Address_Size_"+ str(address_size[j])
 
             print("label de salida", label_validation1)
-            print("salida de la red", out_red)
-            print("tipo de salida de la red", type(out_red))
-            print("tamaño salida de la red", len(out_red))
+            print("salida de la red", coord_prediction)
 
             matrizdeconfusion = calcular_matrix_de_confusion(label_validation1,
-                                                             out_red,
+                                                             coord_prediction,
                                                              titulo)
             print("confution matrix", matrizdeconfusion)
             matriz_confusion_sumatoria = matriz_confusion_sumatoria + matrizdeconfusion
             # vector_matriz_confusion.append(matrizdeconfusion)
 
             print('\n Measuring output performance ...')
-            acuracia = calular_acuracia(label_validation1, out_red)
+            acuracia = calular_acuracia(label_validation1, coord_prediction)
             vector_acuracia.append(acuracia)
 
         # ----------------- CALCULA ESTADISTICAS -----------------------
@@ -254,7 +253,7 @@ def select_best_beam(enableDebug=False):
 
         # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
         # titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA ** \n Address Size " + str(address_size[j])
-        titulo_mc = "matrix" +str(address_size[j])
+        titulo_mc = "matrix" + str(address_size[j])
         df_cm = pd.DataFrame(matriz_confusion_media, index=range(0, numero_de_grupos),
                              columns=range(0, numero_de_grupos))
         path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_mc + ".png"
@@ -308,54 +307,18 @@ def select_best_beam(enableDebug=False):
                       "Tempo de Teste Médio (s)",
                       ruta=path_result + "/processingTime/time_test.png")
 
-    return input_train, input_validation, label_train, label_validation, out_red, df_cm
-
-
-def select_best_beam_debug(enableDebug=False):
-    global numero_de_grupos
-
-    print('\n Reading pre-processed data ...')
-    input_train, input_validation = read_inputs(debug=enableDebug)  # coordenadas
-    label_train, label_validation, label_train1, label_validation1 = read_labels_data(debug=enableDebug)  #
-
-    # config parameters
-    if enableDebug:
-        # address_size = [6,24,34,44,54,64]
-        address_size = [28]
-        numero_experimentos = 2
-    else:
-        address_size = [28]
-        # numero_experimentos = 1
-        # address_size = [6,12,18,24,28,34,38,44,48,54,58,64]
-        numero_experimentos = 10
-
-    print("input train", input_train.shape)
-    # -----------------USA LA RED WIZARD -------------------
-    out_red, time_train, time_test = neural_network(input_train,
-                                                    label_train,
-                                                    input_validation)
-
-    print("label de salida", label_validation)
-    print("forma de label de salida", label_validation.shape)
-
-    print("salida de la red", out_red)
-    print("forma de la salida de la red", out_red.shape)
-
-    print("forma del modelo", model.output_shape)
-
-    df_cm = 0
-    return input_train, input_validation, label_train, label_validation, out_red, df_cm
+    return coord_input_train, coord_input_validation, coord_label_train, coord_label_validation, coord_prediction, df_cm
 
 
 def create_keras_model(numero_de_salidas):
-    model = tf.keras.Sequential([
+    local_model = tf.keras.Sequential([
         # tf.keras.layers.Flatten(input_shape=(5750,)),
         tf.keras.layers.Dense(1, activation='relu'),
         tf.keras.layers.Dense(numero_de_salidas)
     ])
-    model.compile(optimizer='adam',
-                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                  metrics=['accuracy'])
+    local_model.compile(optimizer='adam',
+                        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                        metrics=['accuracy'])
 
     # model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Dense(5750, activation=tf.nn.relu))
@@ -364,7 +327,7 @@ def create_keras_model(numero_de_salidas):
     # model.add(tf.keras.layers.Dense(1, activation=tf.nn.softmax))
     # model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    return model
+    return local_model
 
 
 # ------------------ MAIN -------------------#
@@ -374,9 +337,4 @@ numero_de_grupos = round(256 / k)
 
 model = create_keras_model(k)
 
-[input_train,
- input_validation,
- label_train,
- label_validation,
- out_red,
- matriz_confusion_media_dataframe] = select_best_beam(enableDebug=True)
+select_best_beam(enableDebug=True)
