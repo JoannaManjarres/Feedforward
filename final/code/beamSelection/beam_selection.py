@@ -31,10 +31,7 @@ def read_labels_data(debug=False):
     input_cache_file = np.load(label_path + "beams_output_validation.npz")
     label_validation = input_cache_file["output_test"]
 
-    label_train1 = np.char.mod('%d', label_train)
-    label_validation1 = np.char.mod('%d', label_validation)
-
-    return label_train, label_validation, label_train1.tolist(), label_validation1.tolist()
+    return label_train, label_validation
 
 
 def read_inputs(debug=False):
@@ -74,7 +71,7 @@ def neural_network(x_train,
     print('\n Training NN ...')
     tic()
     # train using the input data
-    model.fit(x_train, y_train, epochs=5)
+    model.fit(x_train, y_train, epochs=1)
 
     tiempo_entrenamiento_ms = toc()
 
@@ -116,22 +113,22 @@ def calculo_desvio_padrao(input_vector):
 
 
 def calcular_matrix_de_confusion(labels_de_test,
-                                 salida_de_red,
-                                 titulo):
+                                 salida_predecida_por_la_red,
+                                 titulo,
+                                 enableDebug):
     global numero_de_grupos
     # plotMatrizDeConfusion = False
 
     matriz_de_confusion = np.zeros((numero_de_grupos, numero_de_grupos), dtype=int)
-    # print("Datos Test: ", datos_de_test)
-    # print("Salida de la red ", salida_de_red)
-    for i in range(len(labels_de_test)):
-        esperado = int(labels_de_test[i]) - 1
-        obtenido = int(salida_de_red[i]) - 1
-        # print("esperado = ",esperado)
-        # print("obtenido = ",obtenido)
 
-        matriz_de_confusion[obtenido][esperado] = matriz_de_confusion[obtenido][esperado] + 1
-    # print(matriz_de_confusion)
+    for i in range(len(labels_de_test)):
+        actual = int(labels_de_test[i]) - 1
+        predicted = int(salida_predecida_por_la_red[i]) - 1
+
+        matriz_de_confusion[actual][predicted] = matriz_de_confusion[actual][predicted] + 1
+
+    if enableDebug:
+        print(titulo, "[actual][predicted]", "\n", matriz_de_confusion)
 
     # path_result = "../../results/"
     # np.savetxt('confusionMatrix/'+str(nombre_del_experimento)+ \
@@ -170,142 +167,66 @@ def select_best_beam(enableDebug=False):
 
     print('\n Reading pre-processed data ...')
     coord_input_train, coord_input_validation = read_inputs(debug=enableDebug)  # coordenadas
-    coord_label_train, coord_label_validation, label_train1, label_validation1 = read_labels_data(debug=enableDebug)  #
+    coord_label_train, coord_label_validation = read_labels_data(debug=enableDebug)
 
     # config parameters
     if enableDebug:
-        # address_size = [6,24,34,44,54,64]
-        address_size = [28]
         numero_experimentos = 2
     else:
-        address_size = [28]
-        # numero_experimentos = 1
-        # address_size = [6,12,18,24,28,34,38,44,48,54,58,64]
-        numero_experimentos = 10
-
-    vector_time_train_media = []
-    vector_time_test_media = []
-    vector_acuracia_media = []
-
-    vector_acuracia_desvio_padrao = []
-    vector_time_train_desvio_padrao = []
-    vector_time_test_desvio_padrao = []
+        numero_experimentos = 1
 
     path_result = "../../results/"
 
-    for j in range(len(address_size)):  # For encargado de variar el tamano de la memoria
+    vector_acuracia = []
+    vector_time_test = []
+    vector_time_train = []
+    vector_matriz_confusion = []
+    matriz_confusion_sumatoria = np.zeros((numero_de_grupos, numero_de_grupos), dtype=float)
 
-        vector_acuracia = []
-        vector_time_test = []
-        vector_time_train = []
-        vector_matriz_confusion = []
-        matriz_confusion_sumatoria = np.zeros((numero_de_grupos, numero_de_grupos), dtype=float)
+    for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
+        print("\n\n >> Experimento: " + str(i))
 
-        print("Tamanho memoria: " + str(address_size[j]))
+        coord_prediction, time_train, time_test = neural_network(coord_input_train,
+                                                                 coord_label_train,
+                                                                 coord_input_validation)
 
-        for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
-            print("   Experimento: " + str(i))
 
-            # -----------------USA LA RED WIZARD -------------------
-            coord_prediction, time_train, time_test = neural_network(coord_input_train,
-                                                                     coord_label_train,
-                                                                     coord_input_validation)
+        # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
+        titulo = "Matriz_Confucao_" + str(i)
 
-            vector_time_train.append(time_train)
-            vector_time_test.append(time_test)
+        if enableDebug:
+            print("coord_label_validation = \n", coord_label_validation)
+            print("coord_prediction = \n", coord_prediction)
 
-            # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
-            titulo = "** MATRIZ DE CONFUSÃO " + str(i) + " **" + " \n Address Size " + str(address_size[j])
-            # nombre_arq_MC = "MC_Address_Size_"+ str(address_size[j])
+        matriz_de_confusion = calcular_matrix_de_confusion(coord_label_validation,
+                                                           coord_prediction,
+                                                           titulo,
+                                                           enableDebug)
 
-            print("label de salida", label_validation1)
-            print("salida de la red", coord_prediction)
+        matriz_confusion_sumatoria = matriz_confusion_sumatoria + matriz_de_confusion
+        vector_matriz_confusion.append(matriz_de_confusion)
 
-            matrizdeconfusion = calcular_matrix_de_confusion(label_validation1,
-                                                             coord_prediction,
-                                                             titulo)
-            print("confution matrix", matrizdeconfusion)
-            matriz_confusion_sumatoria = matriz_confusion_sumatoria + matrizdeconfusion
-            # vector_matriz_confusion.append(matrizdeconfusion)
+        acuracia = calular_acuracia(coord_label_validation, coord_prediction)
+        vector_acuracia.append(acuracia)
+        vector_time_train.append(time_train)
+        vector_time_test.append(time_test)
 
-            print('\n Measuring output performance ...')
-            acuracia = calular_acuracia(label_validation1, coord_prediction)
-            vector_acuracia.append(acuracia)
+    # ----------------- CALCULA ESTADISTICAS -----------------------
+    [acuracia_media, acuracia_desvio_padrao] = calculo_desvio_padrao(vector_acuracia)
+    [time_train_media, time_train_desvio_padrao] = calculo_desvio_padrao(vector_time_train)
+    [time_test_media, time_test_desvio_padrao] = calculo_desvio_padrao(vector_time_test)
+    matriz_confusion_media = matriz_confusion_sumatoria / numero_experimentos
 
-        # ----------------- CALCULA ESTADISTICAS -----------------------
-        [acuracia_media, acuracia_desvio_padrao] = calculo_desvio_padrao(vector_acuracia)
-        [time_train_media, time_train_desvio_padrao] = calculo_desvio_padrao(vector_time_train)
-        [time_test_media, time_test_desvio_padrao] = calculo_desvio_padrao(vector_time_test)
-        matriz_confusion_media = matriz_confusion_sumatoria / numero_experimentos
-
-        # ----------------- GUARDA VECTORES DE ESTADISTICAS -----------------------
-        vector_acuracia_media.append(acuracia_media)
-        vector_acuracia_desvio_padrao.append(acuracia_desvio_padrao)
-
-        vector_time_train_media.append(time_train_media)
-        vector_time_train_desvio_padrao.append(time_train_desvio_padrao)
-
-        vector_time_test_media.append(time_test_media)
-        vector_time_test_desvio_padrao.append(time_test_desvio_padrao)
-
-        # np.savez( path_result+"metricas.npz",
-        #          matriz_confusao = vector_matriz_confusion)
-
-        # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
-        # titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA ** \n Address Size " + str(address_size[j])
-        titulo_mc = "matrix" + str(address_size[j])
-        df_cm = pd.DataFrame(matriz_confusion_media, index=range(0, numero_de_grupos),
-                             columns=range(0, numero_de_grupos))
-        path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_mc + ".png"
-        print("debug", df_cm)
-        pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_mc, nombreFigura=path_confusion_matriz)
-
-    # ----------------- GUARDA EM CSV VECTORES DE ESTADISTICAS  -----------------------
-    print('\n Saving results files ...')
-
-    with open(path_result + 'accuracy/acuracia.csv', 'w') as f:
-        writer_acuracy = csv.writer(f, delimiter='\t')
-        writer_acuracy.writerows(zip(address_size, vector_acuracia_media, vector_acuracia_desvio_padrao))
-
-    with open(path_result + 'processingTime/time_train.csv', 'w') as f:
-        writer_time_train = csv.writer(f, delimiter='\t')
-        writer_time_train.writerows(zip(address_size, vector_acuracia_media, vector_time_train_desvio_padrao))
-
-    with open(path_result + 'processingTime/time_test.csv', 'w') as f:
-        writer_time_test = csv.writer(f, delimiter='\t')
-        writer_time_test.writerows(zip(address_size, vector_time_test_media, vector_time_test_desvio_padrao))
-
-    # ----------------- PLOT DE RESULTADOS  ------------------------------
-    # titulo ="% de treinamiento =" + str(porcentaje_entrenamiento) +", Threshold = "+str(threshold)
-    titulo = "Test"
-    nombre_curva = "Dado com desvio padrão"
-
-    plotar_resultados(address_size,
-                      vector_acuracia_media,
-                      vector_acuracia_desvio_padrao,
-                      titulo,
-                      nombre_curva,
-                      "Tamanho da memória",
-                      "Acuracia Média (%)",
-                      ruta=path_result + "/accuracy/acuracia.png")
-
-    plotar_resultados(address_size,
-                      vector_time_train_media,
-                      vector_time_train_desvio_padrao,
-                      titulo,
-                      nombre_curva,
-                      "Tamanho da memória",
-                      "Tempo de treinamento Médio (s)",
-                      ruta=path_result + "/processingTime/time_train.png")
-
-    plotar_resultados(address_size,
-                      vector_time_test_media,
-                      vector_time_test_desvio_padrao,
-                      titulo,
-                      nombre_curva,
-                      "Tamanho da memória",
-                      "Tempo de Teste Médio (s)",
-                      ruta=path_result + "/processingTime/time_test.png")
+    # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
+    titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA **"
+    titulo_archivo = "matrix_de_confucion"
+    df_cm = pd.DataFrame(matriz_confusion_media, index=range(1, numero_de_grupos + 1),
+                         columns=range(1, numero_de_grupos + 1))
+    path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
+    if enableDebug:
+        print("matriz de confução media [actual][predicted]= \n", df_cm)
+    pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_mc, nombreFigura=path_confusion_matriz, \
+                                        pred_val_axis='y')
 
     return coord_input_train, coord_input_validation, coord_label_train, coord_label_validation, coord_prediction, df_cm
 
@@ -314,11 +235,11 @@ def create_keras_model(numero_de_salidas):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
     local_model.add(tf.keras.layers.Dense(1, activation=tf.nn.relu))
-    local_model.add(tf.keras.layers.Dense(numero_de_salidas, activation=tf.nn.softmax))
+    local_model.add(tf.keras.layers.Dense(numero_de_salidas+1, activation=tf.nn.softmax))
 
     local_model.compile(optimizer='adam',
-                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                  metrics=['accuracy'])
+                        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                        metrics=['accuracy'])
 
     return local_model
 
@@ -327,7 +248,8 @@ def create_keras_model(numero_de_salidas):
 k = 26
 process_and_save_output_beams(k)
 numero_de_grupos = round(256 / k)
+print("numero_de_grupos = ", numero_de_grupos)
 
-model = create_keras_model(k)
+model = create_keras_model(numero_de_grupos)
 
-select_best_beam(enableDebug=True)
+select_best_beam(enableDebug=False)
