@@ -245,11 +245,12 @@ def create_keras_model(numero_de_salidas):
 
 
 # ------------------ MAIN -------------------#
-k = 26
-process_and_save_output_beams(k)
-numero_de_grupos = round(256 / k)
-print("numero_de_grupos = ", numero_de_grupos)
+if __name__ == '__main__':
+    k = 26
+    process_and_save_output_beams(k)
+    numero_de_grupos = round(256 / k)
+    print("numero_de_grupos = ", numero_de_grupos)
 
-model = create_keras_model(numero_de_grupos)
+    model = create_keras_model(numero_de_grupos)
 
-select_best_beam(enableDebug=False)
+    select_best_beam(enableDebug=False)
