@@ -8,11 +8,8 @@ Created on Sat Dec 26 06:18:48 2020
 
 import numpy as np
 import csv
-from keras.optimizers import SGD
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from sklearn import preprocessing
-from sklearn.preprocessing import normalize
 
 def obtener_coordenadas_validas():
 
@@ -44,7 +41,7 @@ def obtener_coordenadas_validas():
     print("x: ",min(x_coordinates_train), "y: ", min(y_coordinates_train))
      
     #normalizando as entradas
-    x_train = normalize([x_coordinates_train])
+    x_train = tf.keras.utils.normalize([x_coordinates_train])
     y_train = tf.keras.utils.normalize(y_coordinates_train)
     
    
