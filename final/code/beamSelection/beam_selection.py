@@ -258,21 +258,34 @@ def plot_input_data():
     global x_train
     global y_train
 
-    coord_x = x_train[:, 0]
-    coord_y = x_train[:, 1]
-    beam_group = y_train
+    fig, axs = plt.subplots(1, 2)
+    fig.suptitle('Input data')
 
-    data_frame_test = pd.DataFrame(dict(coord_X=coord_x, coord_y=coord_y, beam_group=beam_group))
-    data_frame_test.head()
-    sns.scatterplot(data=data_frame_test,
-                    x="coord_X",
-                    y="coord_y",
-                    style="beam_group",
-                    sizes=(200, 200),
-                    size="beam_group",
-                    palette="deep",
-                    legend="full",
-                    hue="beam_group")
+    for i in range(2):
+        if i == 0:
+            coord_x = x_train[:, 0]
+            coord_y = x_train[:, 1]
+            beam_group = y_train
+            ax = axs[0]
+        else:
+            coord_x = x_test[:, 0]
+            coord_y = x_test[:, 1]
+            beam_group = y_test
+            ax = axs[1]
+
+        data_frame_test = pd.DataFrame(dict(coord_X=coord_x, coord_y=coord_y, beam_group=beam_group))
+        data_frame_test.head()
+
+        sns.scatterplot(data=data_frame_test,
+                        x="coord_X",
+                        y="coord_y",
+                        style="beam_group",
+                        sizes=(200, 200),
+                        size="beam_group",
+                        palette="deep",
+                        legend="full",
+                        hue="beam_group",
+                        ax=ax)
     plt.show()
 
 
