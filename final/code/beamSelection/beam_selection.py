@@ -180,6 +180,7 @@ def select_best_beam(enableDebug=False):
     vector_time_train = []
     vector_matriz_confusion = []
     matriz_confusion_sumatoria = np.zeros((numero_de_grupos, numero_de_grupos), dtype=float)
+    best_model = model
 
     for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
         print("\n\n >> Experimento: " + str(i))
@@ -231,16 +232,34 @@ def select_best_beam(enableDebug=False):
           ";  dp = {:.2f}ms".format(time_train_desvio_padrao * 1000) +
           "\nTempo de predição medio = {:.2f}ms".format(time_test_media * 1000) +
           ";  dp = {:.2f}ms".format(time_test_desvio_padrao * 1000))
-
-    df_cm = pd.DataFrame(matriz_confusion_media, index=range(1, numero_de_grupos + 1),
-                         columns=range(1, numero_de_grupos + 1))
     path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
+
+    imprimir_matriz_de_confucion(enableDebug, matriz_confusion_media, numero_de_grupos, path_confusion_matriz,
+                                 titulo_mc)
+
+    titulo_mc = "** Melhor Modelo **"
+    titulo_archivo = "melhor_modelo"
+    path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
+
+    coord_prediction, time_test = predict(x_test)
+    matriz_de_confusion = calcular_matrix_de_confusion(y_test,
+                                                       coord_prediction,
+                                                       "mc_" + titulo_archivo,
+                                                       enableDebug)
+    imprimir_matriz_de_confucion(enableDebug, matriz_de_confusion, numero_de_grupos, path_confusion_matriz,
+                                 titulo_mc)
+
+
+
+
+def imprimir_matriz_de_confucion(enableDebug, matriz_confusion, tamano, path_con_nombre_de_arvhivo,
+                                 titulo_figura):
+    df_cm = pd.DataFrame(matriz_confusion, index=range(1, tamano + 1),
+                         columns=range(1, tamano + 1))
     if enableDebug:
         print("matriz de confução media [actual][predicted]= \n", df_cm)
-    pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_mc, nombreFigura=path_confusion_matriz,
-                                        pred_val_axis='y')
-
-
+    pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_figura,
+                                        nombreFigura=path_con_nombre_de_arvhivo, pred_val_axis='y')
 
 
 def create_keras_model(numero_de_salidas):
