@@ -66,14 +66,12 @@ def toc():
     return toc_s - tic_s
 
 
-def neural_network(x_train,
-                   y_train,
-                   x_validation):
+def trainning(x_train,
+              y_train):
     global model
     global epocas
     global batch_size
 
-    print('\n Training NN ...')
     tic()
     # train using the input data
     model.fit(x_train, y_train,
@@ -81,16 +79,16 @@ def neural_network(x_train,
               batch_size=batch_size,
               verbose=1,
               validation_split=0.2)
+    return toc()
 
-    tiempo_entrenamiento_ms = toc()
 
-    print('\n Selecting Beams using NN ...')
+def predict(x_validation):
+    global model
+
     tic()
-    # classify some data
     y_validation = np.argmax(model.predict(x_validation), axis=-1)
-    tiempo_test_ms = toc()
 
-    return y_validation, tiempo_entrenamiento_ms, tiempo_test_ms
+    return y_validation, toc()
 
 
 def calular_acuracia(label_val, out_net):
@@ -188,10 +186,9 @@ def select_best_beam(enableDebug=False):
 
         tf.keras.backend.clear_session()
         model = create_keras_model(numero_de_grupos)
+        time_train = trainning(x_train, y_train)
 
-        coord_prediction, time_train, time_test = neural_network(x_train,
-                                                                 y_train,
-                                                                 x_test)
+        coord_prediction, time_test = predict(x_test)
 
         # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
         titulo = "Matriz_Confucao_" + str(i)
@@ -218,6 +215,7 @@ def select_best_beam(enableDebug=False):
             best_model = model
 
     model = best_model
+
     # ----------------- CALCULA ESTADISTICAS -----------------------
     [acuracia_media, acuracia_desvio_padrao] = calculo_desvio_padrao(vector_acuracia)
     [time_train_media, time_train_desvio_padrao] = calculo_desvio_padrao(vector_time_train)
@@ -241,6 +239,8 @@ def select_best_beam(enableDebug=False):
         print("matriz de confução media [actual][predicted]= \n", df_cm)
     pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_mc, nombreFigura=path_confusion_matriz,
                                         pred_val_axis='y')
+
+
 
 
 def create_keras_model(numero_de_salidas):
