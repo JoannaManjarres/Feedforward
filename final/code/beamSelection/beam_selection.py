@@ -7,7 +7,6 @@ Created on Sun Jul 12 10:45:28 2020
 """
 import timeit
 import sys
-import csv
 import math
 import numpy as np
 import pandas as pd
@@ -130,17 +129,6 @@ def calcular_matrix_de_confusion(labels_de_test,
     if enableDebug:
         print(titulo, "[actual][predicted]", "\n", matriz_de_confusion)
 
-    # path_result = "../../results/"
-    # np.savetxt('confusionMatrix/'+str(nombre_del_experimento)+ \
-    #   '/MC_'+nombre_del_experimento+str(numero_del_experimento)+ \
-    #   '_'+str(numero_de_la_matriz) +'.csv', matriz_de_confusion_prueba, \
-    #   delimiter=',', fmt='%d')
-
-    # np.savetxt(path_result+nombre_arq_MC, matriz_de_confusion, delimiter=',', fmt='%d')
-    # if(plotMatrizDeConfusion):
-    #     df_cm = pd.DataFrame(matriz_de_confusion, index=range(0,10), columns=range(0,10))
-    #     pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues',title=titulo)
-
     return matriz_de_confusion
 
 
@@ -181,6 +169,7 @@ def select_best_beam(enableDebug=False):
     vector_time_test = []
     vector_time_train = []
     vector_matriz_confusion = []
+    coord_prediction =[]
     matriz_confusion_sumatoria = np.zeros((numero_de_grupos, numero_de_grupos), dtype=float)
 
     for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
@@ -189,7 +178,6 @@ def select_best_beam(enableDebug=False):
         coord_prediction, time_train, time_test = neural_network(coord_input_train,
                                                                  coord_label_train,
                                                                  coord_input_validation)
-
 
         # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
         titulo = "Matriz_Confucao_" + str(i)
@@ -220,12 +208,19 @@ def select_best_beam(enableDebug=False):
     # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
     titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA **"
     titulo_archivo = "matrix_de_confucion"
+    print("\nAcuracia media = {:.2f}".format(acuracia_media * 100) \
+          + ";  dp = {:.2f}".format(acuracia_desvio_padrao * 100) + \
+          "\nTempo de entrenamento medio = {:.2f}ms".format(time_train_media * 1000) + \
+          ";  dp = {:.2f}ms".format(time_train_desvio_padrao * 1000) + \
+          "\nTempo de predição medio = {:.2f}ms".format(time_test_media * 1000) + \
+          ";  dp = {:.2f}ms".format(time_test_desvio_padrao * 1000))
+
     df_cm = pd.DataFrame(matriz_confusion_media, index=range(1, numero_de_grupos + 1),
                          columns=range(1, numero_de_grupos + 1))
     path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
     if enableDebug:
         print("matriz de confução media [actual][predicted]= \n", df_cm)
-    pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_mc, nombreFigura=path_confusion_matriz, \
+    pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_mc, nombreFigura=path_confusion_matriz,
                                         pred_val_axis='y')
 
     return coord_input_train, coord_input_validation, coord_label_train, coord_label_validation, coord_prediction, df_cm
@@ -235,7 +230,7 @@ def create_keras_model(numero_de_salidas):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
     local_model.add(tf.keras.layers.Dense(1, activation=tf.nn.relu))
-    local_model.add(tf.keras.layers.Dense(numero_de_salidas+1, activation=tf.nn.softmax))
+    local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.softmax))
 
     local_model.compile(optimizer='adam',
                         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
@@ -246,11 +241,11 @@ def create_keras_model(numero_de_salidas):
 
 # ------------------ MAIN -------------------#
 if __name__ == '__main__':
-    k = 26
-    process_and_save_output_beams(k)
-    numero_de_grupos = round(256 / k)
-    print("numero_de_grupos = ", numero_de_grupos)
+    numero_de_antenas_por_grupo = 26
+    numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
+
+    process_and_save_output_beams(numero_de_antenas_por_grupo)
 
     model = create_keras_model(numero_de_grupos)
 
-    select_best_beam(enableDebug=False)
+    select_best_beam(enableDebug=True)
