@@ -27,10 +27,10 @@ def beams_log_scale(y, threshold_below_max):
 def get_beam_output(output_file):
     threshold_below_max = 1
 
-    print("Reading dataset...", output_file)
+    print("Reading dataset:", output_file)
     output_cache_file = np.load(output_file)
     y_matrix = output_cache_file['output_classification']
-    print("Forma yMatrix", y_matrix.shape)
+    print("tamaño y_matrix = ", y_matrix.shape)
     y_matrix = np.abs(y_matrix)
     y_matrix /= np.max(y_matrix)
     num_classes = y_matrix.shape[1] * y_matrix.shape[2]
@@ -51,7 +51,6 @@ def generate_groups_beams(y, k):
     return np.asarray(labels)
 
 
-# -------------------------- MAIN ------------------------------
 
 def process_and_save_output_beams(k):
     if k == 0:
@@ -80,3 +79,8 @@ def process_and_save_output_beams(k):
         debug_validation = label_validation[0:2]
         np.savez(save_path + 'beams_output_validation' + '.npz', output_test=label_validation)
         np.savez(debug_path + 'beams_output_validation' + '.npz', output_test=debug_validation)
+
+
+if __name__ == '__main__':
+    numero_de_antenas_por_grupo = 26
+    process_and_save_output_beams(numero_de_antenas_por_grupo)
