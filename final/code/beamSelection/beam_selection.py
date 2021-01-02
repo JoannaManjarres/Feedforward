@@ -243,7 +243,7 @@ def create_keras_model(numero_de_salidas):
     local_model.add(tf.keras.layers.Dense(3, activation=tf.nn.relu))
     local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.softmax))
 
-    local_model.compile(optimizer='adam',
+    local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.1),
                         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                         metrics=['accuracy'])
 
