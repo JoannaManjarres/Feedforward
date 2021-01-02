@@ -66,14 +66,12 @@ def toc():
     return toc_s - tic_s
 
 
-def neural_network(x_train,
-                   y_train,
-                   x_validation):
+def trainning(x_train,
+              y_train):
     global model
     global epocas
     global batch_size
 
-    print('\n Training NN ...')
     tic()
     # train using the input data
     model.fit(x_train, y_train,
@@ -81,16 +79,16 @@ def neural_network(x_train,
               batch_size=batch_size,
               verbose=1,
               validation_split=0.2)
+    return toc()
 
-    tiempo_entrenamiento_ms = toc()
 
-    print('\n Selecting Beams using NN ...')
+def predict(x_validation):
+    global model
+
     tic()
-    # classify some data
     y_validation = np.argmax(model.predict(x_validation), axis=-1)
-    tiempo_test_ms = toc()
 
-    return y_validation, tiempo_entrenamiento_ms, tiempo_test_ms
+    return y_validation, toc()
 
 
 def calular_acuracia(label_val, out_net):
@@ -182,16 +180,16 @@ def select_best_beam(enableDebug=False):
     vector_time_train = []
     vector_matriz_confusion = []
     matriz_confusion_sumatoria = np.zeros((numero_de_grupos, numero_de_grupos), dtype=float)
+    best_model = model
 
     for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
         print("\n\n >> Experimento: " + str(i))
 
         tf.keras.backend.clear_session()
         model = create_keras_model(numero_de_grupos)
+        time_train = trainning(x_train, y_train)
 
-        coord_prediction, time_train, time_test = neural_network(x_train,
-                                                                 y_train,
-                                                                 x_test)
+        coord_prediction, time_test = predict(x_test)
 
         # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
         titulo = "Matriz_Confucao_" + str(i)
@@ -218,6 +216,7 @@ def select_best_beam(enableDebug=False):
             best_model = model
 
     model = best_model
+
     # ----------------- CALCULA ESTADISTICAS -----------------------
     [acuracia_media, acuracia_desvio_padrao] = calculo_desvio_padrao(vector_acuracia)
     [time_train_media, time_train_desvio_padrao] = calculo_desvio_padrao(vector_time_train)
@@ -233,14 +232,34 @@ def select_best_beam(enableDebug=False):
           ";  dp = {:.2f}ms".format(time_train_desvio_padrao * 1000) +
           "\nTempo de predição medio = {:.2f}ms".format(time_test_media * 1000) +
           ";  dp = {:.2f}ms".format(time_test_desvio_padrao * 1000))
-
-    df_cm = pd.DataFrame(matriz_confusion_media, index=range(1, numero_de_grupos + 1),
-                         columns=range(1, numero_de_grupos + 1))
     path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
+
+    imprimir_matriz_de_confucion(enableDebug, matriz_confusion_media, numero_de_grupos, path_confusion_matriz,
+                                 titulo_mc)
+
+    titulo_mc = "** Melhor Modelo **"
+    titulo_archivo = "melhor_modelo"
+    path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
+
+    coord_prediction, time_test = predict(x_test)
+    matriz_de_confusion = calcular_matrix_de_confusion(y_test,
+                                                       coord_prediction,
+                                                       "mc_" + titulo_archivo,
+                                                       enableDebug)
+    imprimir_matriz_de_confucion(enableDebug, matriz_de_confusion, numero_de_grupos, path_confusion_matriz,
+                                 titulo_mc)
+
+
+
+
+def imprimir_matriz_de_confucion(enableDebug, matriz_confusion, tamano, path_con_nombre_de_arvhivo,
+                                 titulo_figura):
+    df_cm = pd.DataFrame(matriz_confusion, index=range(1, tamano + 1),
+                         columns=range(1, tamano + 1))
     if enableDebug:
         print("matriz de confução media [actual][predicted]= \n", df_cm)
-    pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_mc, nombreFigura=path_confusion_matriz,
-                                        pred_val_axis='y')
+    pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_figura,
+                                        nombreFigura=path_con_nombre_de_arvhivo, pred_val_axis='y')
 
 
 def create_keras_model(numero_de_salidas):
