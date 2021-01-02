@@ -14,6 +14,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import confusion_matrix_pretty_print as pretty
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+# from mlxtend.plotting import plot_decision_regions
 
 sys.path.append('../preProcessing/')
 from pre_processing_baseline_output import process_and_save_output_beams
@@ -154,23 +157,14 @@ def plotar_resultados(x_vector,
 
 def select_best_beam(enableDebug=False):
     global numero_de_grupos
-
-    print('\n Reading pre-processed data ...')
-    coord_input_train, coord_input_validation = read_inputs(debug=enableDebug)  # coordenadas
-    coord_label_train, coord_label_validation = read_labels_data(debug=enableDebug)
-
-    x = coord_input_validation[:, 0]
-    y = coord_input_validation[:, 1]
-    z = coord_input_validation[:, 2]
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(x, y, z, c=z, cmap='coolwarm')
-    plt.pause(1)
-
+    global x_train
+    global x_test
+    global y_train
+    global y_test
 
     # config parameters
     if enableDebug:
-        numero_experimentos = 2
+        numero_experimentos = 1
     else:
         numero_experimentos = 1
 
@@ -180,24 +174,24 @@ def select_best_beam(enableDebug=False):
     vector_time_test = []
     vector_time_train = []
     vector_matriz_confusion = []
-    coord_prediction =[]
+    coord_prediction = []
     matriz_confusion_sumatoria = np.zeros((numero_de_grupos, numero_de_grupos), dtype=float)
 
     for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
         print("\n\n >> Experimento: " + str(i))
 
-        coord_prediction, time_train, time_test = neural_network(coord_input_train,
-                                                                 coord_label_train,
-                                                                 coord_input_validation)
+        coord_prediction, time_train, time_test = neural_network(x_train,
+                                                                 y_train,
+                                                                 x_test)
 
         # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
         titulo = "Matriz_Confucao_" + str(i)
 
         if enableDebug:
-            print("coord_label_validation = \n", coord_label_validation)
+            print("coord_label_validation = \n", y_test)
             print("coord_prediction = \n", coord_prediction)
 
-        matriz_de_confusion = calcular_matrix_de_confusion(coord_label_validation,
+        matriz_de_confusion = calcular_matrix_de_confusion(y_test,
                                                            coord_prediction,
                                                            titulo,
                                                            enableDebug)
@@ -205,7 +199,7 @@ def select_best_beam(enableDebug=False):
         matriz_confusion_sumatoria = matriz_confusion_sumatoria + matriz_de_confusion
         vector_matriz_confusion.append(matriz_de_confusion)
 
-        acuracia = calular_acuracia(coord_label_validation, coord_prediction)
+        acuracia = calular_acuracia(y_test, coord_prediction)
         vector_acuracia.append(acuracia)
         vector_time_train.append(time_train)
         vector_time_test.append(time_test)
@@ -234,13 +228,12 @@ def select_best_beam(enableDebug=False):
     pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_mc, nombreFigura=path_confusion_matriz,
                                         pred_val_axis='y')
 
-    return coord_input_train, coord_input_validation, coord_label_train, coord_label_validation, coord_prediction, df_cm
-
 
 def create_keras_model(numero_de_salidas):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
     local_model.add(tf.keras.layers.Dense(3, activation=tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(3, activation=tf.nn.sigmoid))
     local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.softmax))
 
     local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.1),
@@ -250,14 +243,61 @@ def create_keras_model(numero_de_salidas):
     return local_model
 
 
+def plot_input_data():
+    global x_test
+    global y_test
+    global x_train
+    global y_train
+    enable_scale = True
+
+    if enable_scale:
+        scaler = StandardScaler().fit(x_train)
+        x_train = scaler.transform(x_train)
+        x_test = scaler.transform(x_test)
+
+    # coord_x = x_test[:, 0]
+    # coord_y = x_test[:, 1]
+    # beam_group = y_test
+    coord_x = x_train[:, 0]
+    coord_y = x_train[:, 1]
+    beam_group = y_train
+
+    data_frame_test = pd.DataFrame(dict(coord_X=coord_x, coord_y=coord_y, beam_group=beam_group))
+    data_frame_test.head()
+    sns.scatterplot(data=data_frame_test,
+                    x="coord_X",
+                    y="coord_y",
+                    style="beam_group",
+                    sizes=(200, 200),
+                    size="beam_group",
+                    palette="deep",
+                    legend="full",
+                    hue="beam_group")
+    plt.show()
+
+
 # ------------------ MAIN -------------------#
 if __name__ == '__main__':
     epocas = 5
     numero_de_antenas_por_grupo = 32
     numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
+    enableDebug = False
 
-    process_and_save_output_beams(numero_de_antenas_por_grupo)
+    # print('\n pre-processing output data ...')
+    # process_and_save_output_beams(numero_de_antenas_por_grupo)
 
+    print('\n creating NN model ...')
     model = create_keras_model(numero_de_grupos)
 
-    select_best_beam(enableDebug=False)
+    print('\n Reading pre-processed data ...')
+    x_train, x_test = read_inputs(debug=enableDebug)
+    y_train, y_test = read_labels_data(debug=enableDebug)
+
+    print('\n Plotting data ...')
+    plot_input_data()
+
+    print('\n Selecting best beam ...')
+    select_best_beam(enableDebug=enableDebug)
+
+    # plot_decision_regions(x_test, y_test, clf=model, legend=2)
+    # plt.show()
