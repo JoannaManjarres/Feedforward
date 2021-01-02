@@ -132,11 +132,20 @@ if __name__ == '__main__':
         x_test = preprocesamiento_coordenadas(coord_validation1, limit_ep_train, "validation")
     else:
         order = 3
-        axis = 0
-        x_train = coord_train1[:, 1:4]
-        x_test = coord_validation1[:, 1:4]
-        x_train = tf.keras.utils.normalize(x_train, axis=axis, order=order)
-        x_test = tf.keras.utils.normalize(x_test, axis=axis, order=order)
+        axis = 1
+        enable_xyz = False
+        enable_normalize = False
+
+        if enable_xyz:
+            selection_end = 4
+        else:
+            selection_end = 3
+
+        x_train = coord_train1[:, 1:selection_end]
+        x_test = coord_validation1[:, 1:selection_end]
+        if enable_normalize:
+            x_train = tf.keras.utils.normalize(x_train, axis=axis, order=order)
+            x_test = tf.keras.utils.normalize(x_test, axis=axis, order=order)
 
     x_train_debug = x_train[0:20, :]
     x_test_debug = x_test[0:2, :]
