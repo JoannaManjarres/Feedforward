@@ -16,7 +16,7 @@ import tensorflow as tf
 import confusion_matrix_pretty_print as pretty
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
-# from mlxtend.plotting import plot_decision_regions
+from mlxtend.plotting import plot_decision_regions
 
 sys.path.append('../preProcessing/')
 from pre_processing_baseline_output import process_and_save_output_beams
@@ -71,11 +71,16 @@ def neural_network(x_train,
                    x_validation):
     global model
     global epocas
+    global batch_size
 
     print('\n Training NN ...')
     tic()
     # train using the input data
-    model.fit(x_train, y_train, epochs=epocas)
+    model.fit(x_train, y_train,
+              epochs=epocas,
+              batch_size=batch_size,
+              verbose=1,
+              validation_split=0.2)
 
     tiempo_entrenamiento_ms = toc()
 
@@ -161,12 +166,13 @@ def select_best_beam(enableDebug=False):
     global x_test
     global y_train
     global y_test
+    global model
 
     # config parameters
     if enableDebug:
         numero_experimentos = 1
     else:
-        numero_experimentos = 1
+        numero_experimentos = 5
 
     path_result = "../../results/"
 
@@ -179,6 +185,9 @@ def select_best_beam(enableDebug=False):
 
     for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
         print("\n\n >> Experimento: " + str(i))
+
+        tf.keras.backend.clear_session()
+        model = create_keras_model(numero_de_grupos)
 
         coord_prediction, time_train, time_test = neural_network(x_train,
                                                                  y_train,
@@ -233,12 +242,12 @@ def create_keras_model(numero_de_salidas):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
     local_model.add(tf.keras.layers.Dense(3, activation=tf.nn.relu))
-    local_model.add(tf.keras.layers.Dense(3, activation=tf.nn.sigmoid))
     local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.softmax))
 
     local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.1),
                         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                         metrics=['accuracy'])
+    # local_model.compile(loss='binary_crossentropy', optimizer='adam')
 
     return local_model
 
@@ -248,16 +257,7 @@ def plot_input_data():
     global y_test
     global x_train
     global y_train
-    enable_scale = True
 
-    if enable_scale:
-        scaler = StandardScaler().fit(x_train)
-        x_train = scaler.transform(x_train)
-        x_test = scaler.transform(x_test)
-
-    # coord_x = x_test[:, 0]
-    # coord_y = x_test[:, 1]
-    # beam_group = y_test
     coord_x = x_train[:, 0]
     coord_y = x_train[:, 1]
     beam_group = y_train
@@ -278,10 +278,13 @@ def plot_input_data():
 
 # ------------------ MAIN -------------------#
 if __name__ == '__main__':
+    tf.keras.backend.clear_session()
     epocas = 5
+    batch_size = 20
     numero_de_antenas_por_grupo = 32
     numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
     enableDebug = False
+    enable_scale = True
 
     # print('\n pre-processing output data ...')
     # process_and_save_output_beams(numero_de_antenas_por_grupo)
@@ -292,12 +295,16 @@ if __name__ == '__main__':
     print('\n Reading pre-processed data ...')
     x_train, x_test = read_inputs(debug=enableDebug)
     y_train, y_test = read_labels_data(debug=enableDebug)
+    if enable_scale:
+        scaler = StandardScaler().fit(x_train)
+        x_train = scaler.transform(x_train)
+        x_test = scaler.transform(x_test)
 
-    print('\n Plotting data ...')
-    plot_input_data()
+    # print('\n Plotting data ...')
+    # plot_input_data()
 
     print('\n Selecting best beam ...')
     select_best_beam(enableDebug=enableDebug)
 
-    # plot_decision_regions(x_test, y_test, clf=model, legend=2)
-    # plt.show()
+    plot_decision_regions(x_test, y_test, clf=model, legend=2)
+    plt.show()
