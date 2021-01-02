@@ -6,9 +6,9 @@ Created on Sun Jul 12 12:17:39 2020
 @author: joanna
 """
 import numpy as np
+import tensorflow as tf
+import matplotlib.pyplot as plt
 import csv
-
-test = 0
 
 
 def load_baseline_data():
@@ -33,7 +33,7 @@ def load_baseline_data():
 
 def obtener_coordenadas_validas():
     filename = "../../data/processed/coord_input/CoordVehiclesRxPerScene_s008.csv"
-    limit_ep_train = 1564
+    global limit_ep_train
 
     with open(filename) as csvfile:
         reader = csv.DictReader(csvfile)
@@ -52,7 +52,7 @@ def obtener_coordenadas_validas():
                     coordinates_test.append([int(row['EpisodeID']), float(row['x']), float(row['y']), float(row['z'])])
                     id_episodio_test.append(int(row['EpisodeID']))
 
-    return coordinates_train, coordinates_test, limit_ep_train, id_episodio_train, id_episodio_test
+    return np.asarray(coordinates_train), np.asarray(coordinates_test), id_episodio_train, id_episodio_test
 
 
 def preprocesamiento_coordenadas(coordenadas, limit_ep_train, tipo_coor):
@@ -63,10 +63,10 @@ def preprocesamiento_coordenadas(coordenadas, limit_ep_train, tipo_coor):
     # trunk_length_in_meters = 12.5
     # bus_length_in_meters = 9.0
 
-    coord_to_meters_y = 250 / 317.14
-    meters_to_coord_y = 1 / coord_to_meters_y
-    coord_tometers_x = 23 / 181.26
-    meters_to_coord_x = 1 / coord_tometers_x
+    # coord_to_meters_y = 250 / 317.14
+    # meters_to_coord_y = 1 / coord_to_meters_y
+    # coord_tometers_x = 23 / 181.26
+    # meters_to_coord_x = 1 / coord_tometers_x
 
     y_extension_in_coord = interest_area_size_in_coord[0]
 
@@ -121,23 +121,32 @@ def preprocesamiento_coordenadas(coordenadas, limit_ep_train, tipo_coor):
     return x_train
 
 
-# def reorganizar dados para a rede
-
 if __name__ == '__main__':
-    coord_train1, coord_validation1, limit_ep_train, _, _ = obtener_coordenadas_validas()
+    limit_ep_train = 1564
+    binarize_data = False
 
-    X_train = preprocesamiento_coordenadas(coord_train1, limit_ep_train, "train")
-    X_test = preprocesamiento_coordenadas(coord_validation1, limit_ep_train, "validation")
+    coord_train1, coord_validation1, _, _ = obtener_coordenadas_validas()
 
-    X_train_debug = X_train[0:20, :]
-    X_test_debug = X_test[0:2, :]
+    if binarize_data:
+        x_train = preprocesamiento_coordenadas(coord_train1, limit_ep_train, "train")
+        x_test = preprocesamiento_coordenadas(coord_validation1, limit_ep_train, "validation")
+    else:
+        order = 3
+        axis = 0
+        x_train = coord_train1[:, 1:4]
+        x_test = coord_validation1[:, 1:4]
+        x_train = tf.keras.utils.normalize(x_train, axis=axis, order=order)
+        x_test = tf.keras.utils.normalize(x_test, axis=axis, order=order)
+
+    x_train_debug = x_train[0:20, :]
+    x_test_debug = x_test[0:2, :]
 
     saveInputPath = "../../data/processed/coord_input/"
     debugPath = "../../data/processed/coord_input/debug/"
 
     # #train
-    np.savez(saveInputPath + 'coord_train' + '.npz', coordinates_train=X_train)
-    np.savez(debugPath + 'coord_train' + '.npz', coordinates_train=X_train_debug)
+    np.savez(saveInputPath + 'coord_train' + '.npz', coordinates_train=x_train)
+    np.savez(debugPath + 'coord_train' + '.npz', coordinates_train=x_train_debug)
     # test
-    np.savez(saveInputPath + 'coord_test' + '.npz', coordinates_validation=X_test)
-    np.savez(debugPath + 'coord_test' + '.npz', coordinates_validation=X_test_debug)
+    np.savez(saveInputPath + 'coord_test' + '.npz', coordinates_validation=x_test)
+    np.savez(debugPath + 'coord_test' + '.npz', coordinates_validation=x_test_debug)

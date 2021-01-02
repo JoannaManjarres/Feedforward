@@ -8,6 +8,7 @@ Created on Sun Jul 12 10:45:28 2020
 import timeit
 import sys
 import math
+import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -66,11 +67,12 @@ def neural_network(x_train,
                    y_train,
                    x_validation):
     global model
+    global epocas
 
     print('\n Training NN ...')
     tic()
     # train using the input data
-    model.fit(x_train, y_train, epochs=1)
+    model.fit(x_train, y_train, epochs=epocas)
 
     tiempo_entrenamiento_ms = toc()
 
@@ -157,6 +159,15 @@ def select_best_beam(enableDebug=False):
     coord_input_train, coord_input_validation = read_inputs(debug=enableDebug)  # coordenadas
     coord_label_train, coord_label_validation = read_labels_data(debug=enableDebug)
 
+    x = coord_input_validation[:, 0]
+    y = coord_input_validation[:, 1]
+    z = coord_input_validation[:, 2]
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(x, y, z, c=z, cmap='coolwarm')
+    plt.pause(1)
+
+
     # config parameters
     if enableDebug:
         numero_experimentos = 2
@@ -208,11 +219,11 @@ def select_best_beam(enableDebug=False):
     # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
     titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA **"
     titulo_archivo = "matrix_de_confucion"
-    print("\nAcuracia media = {:.2f}".format(acuracia_media * 100) \
-          + ";  dp = {:.2f}".format(acuracia_desvio_padrao * 100) + \
-          "\nTempo de entrenamento medio = {:.2f}ms".format(time_train_media * 1000) + \
-          ";  dp = {:.2f}ms".format(time_train_desvio_padrao * 1000) + \
-          "\nTempo de predição medio = {:.2f}ms".format(time_test_media * 1000) + \
+    print("\nAcuracia media = {:.2f}%".format(acuracia_media)
+          + ";  dp = {:.2f}%".format(acuracia_desvio_padrao) +
+          "\nTempo de entrenamento medio = {:.2f}ms".format(time_train_media * 1000) +
+          ";  dp = {:.2f}ms".format(time_train_desvio_padrao * 1000) +
+          "\nTempo de predição medio = {:.2f}ms".format(time_test_media * 1000) +
           ";  dp = {:.2f}ms".format(time_test_desvio_padrao * 1000))
 
     df_cm = pd.DataFrame(matriz_confusion_media, index=range(1, numero_de_grupos + 1),
@@ -229,7 +240,7 @@ def select_best_beam(enableDebug=False):
 def create_keras_model(numero_de_salidas):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
-    local_model.add(tf.keras.layers.Dense(1, activation=tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(3, activation=tf.nn.relu))
     local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.softmax))
 
     local_model.compile(optimizer='adam',
@@ -241,11 +252,12 @@ def create_keras_model(numero_de_salidas):
 
 # ------------------ MAIN -------------------#
 if __name__ == '__main__':
-    numero_de_antenas_por_grupo = 26
+    epocas = 5
+    numero_de_antenas_por_grupo = 32
     numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
 
     process_and_save_output_beams(numero_de_antenas_por_grupo)
 
     model = create_keras_model(numero_de_grupos)
 
-    select_best_beam(enableDebug=True)
+    select_best_beam(enableDebug=False)
