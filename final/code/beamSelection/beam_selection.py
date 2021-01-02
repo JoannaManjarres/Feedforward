@@ -276,21 +276,27 @@ def plot_input_data():
     plt.show()
 
 
+def pearsonr_2D(x, y):
+    """computes pearson correlation coefficient based on the equation above
+       where x is a 1D and y a 2D array"""
+
+    upper = np.sum((x - np.mean(x)) * (y - np.mean(y, axis=1)[:, None]), axis=1)
+    lower = np.sqrt(np.sum(np.power(x - np.mean(x), 2)) * np.sum(np.power(y - np.mean(y, axis=1)[:, None], 2), axis=1))
+
+    rho = upper / lower
+
+    return rho
+
+
 # ------------------ MAIN -------------------#
 if __name__ == '__main__':
     tf.keras.backend.clear_session()
-    epocas = 5
-    batch_size = 20
+    epocas = 1
+    batch_size = 1000
     numero_de_antenas_por_grupo = 32
     numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
     enableDebug = False
     enable_scale = True
-
-    # print('\n pre-processing output data ...')
-    # process_and_save_output_beams(numero_de_antenas_por_grupo)
-
-    print('\n creating NN model ...')
-    model = create_keras_model(numero_de_grupos)
 
     print('\n Reading pre-processed data ...')
     x_train, x_test = read_inputs(debug=enableDebug)
@@ -300,10 +306,20 @@ if __name__ == '__main__':
         x_train = scaler.transform(x_train)
         x_test = scaler.transform(x_test)
 
-    # print('\n Plotting data ...')
-    # plot_input_data()
+    print('\n Pearson correlation coefficient ...')
+    PCC = pearsonr_2D(np.transpose(y_train), np.transpose(x_train))
+    print("PCC = ", PCC)
 
-    print('\n Selecting best beam ...')
+    print('\n pre-processing output data ...')
+    process_and_save_output_beams(numero_de_antenas_por_grupo)
+
+    print('\n creating NN model ...')
+    model = create_keras_model(numero_de_grupos)
+
+    print('\n Plotting input data ...')
+    plot_input_data()
+
+    print('\n Selecting beam groups...')
     select_best_beam(enableDebug=enableDebug)
 
     plot_decision_regions(x_test, y_test, clf=model, legend=2)
