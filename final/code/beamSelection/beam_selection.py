@@ -172,15 +172,15 @@ def select_best_beam(enableDebug=False):
     if enableDebug:
         numero_experimentos = 1
     else:
-        numero_experimentos = 5
+        numero_experimentos = 10
 
     path_result = "../../results/"
 
     vector_acuracia = []
+    acuracia_max = 0.0
     vector_time_test = []
     vector_time_train = []
     vector_matriz_confusion = []
-    coord_prediction = []
     matriz_confusion_sumatoria = np.zeros((numero_de_grupos, numero_de_grupos), dtype=float)
 
     for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
@@ -213,6 +213,11 @@ def select_best_beam(enableDebug=False):
         vector_time_train.append(time_train)
         vector_time_test.append(time_test)
 
+        if acuracia > acuracia_max:
+            acuracia_max = acuracia
+            best_model = model
+
+    model = best_model
     # ----------------- CALCULA ESTADISTICAS -----------------------
     [acuracia_media, acuracia_desvio_padrao] = calculo_desvio_padrao(vector_acuracia)
     [time_train_media, time_train_desvio_padrao] = calculo_desvio_padrao(vector_time_train)
@@ -241,13 +246,14 @@ def select_best_beam(enableDebug=False):
 def create_keras_model(numero_de_salidas):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
-    local_model.add(tf.keras.layers.Dense(3, activation=tf.nn.relu))
-    local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.softmax))
+    local_model.add(tf.keras.layers.Dense(2, activation=tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(4, activation=tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
 
     local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.1),
                         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                         metrics=['accuracy'])
-    # local_model.compile(loss='binary_crossentropy', optimizer='adam')
+    # local_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     return local_model
 
@@ -304,8 +310,8 @@ def pearsonr_2D(x, y):
 # ------------------ MAIN -------------------#
 if __name__ == '__main__':
     tf.keras.backend.clear_session()
-    epocas = 1
-    batch_size = 1000
+    epocas = 20
+    batch_size = 32
     numero_de_antenas_por_grupo = 32
     numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
     enableDebug = False
@@ -329,8 +335,8 @@ if __name__ == '__main__':
     print('\n creating NN model ...')
     model = create_keras_model(numero_de_grupos)
 
-    print('\n Plotting input data ...')
-    plot_input_data()
+    # print('\n Plotting input data ...')
+    # plot_input_data()
 
     print('\n Selecting beam groups...')
     select_best_beam(enableDebug=enableDebug)
