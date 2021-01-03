@@ -124,7 +124,6 @@ def calcular_matrix_de_confusion(labels_de_test,
                                  titulo,
                                  enableDebug):
     global numero_de_grupos
-    # plotMatrizDeConfusion = False
 
     matriz_de_confusion = np.zeros((numero_de_grupos, numero_de_grupos), dtype=int)
 
@@ -165,12 +164,11 @@ def select_best_beam(enableDebug=False):
     global y_train
     global y_test
     global model
+    global numero_experimentos
 
     # config parameters
     if enableDebug:
-        numero_experimentos = 1
-    else:
-        numero_experimentos = 10
+        numero_experimentos = 2
 
     path_result = "../../results/"
 
@@ -191,17 +189,13 @@ def select_best_beam(enableDebug=False):
 
         coord_prediction, time_test = predict(x_test)
 
-        # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
-        titulo = "Matriz_Confucao_" + str(i)
-
         if enableDebug:
             print("coord_label_validation = \n", y_test)
             print("coord_prediction = \n", coord_prediction)
 
-        matriz_de_confusion = calcular_matrix_de_confusion(y_test,
-                                                           coord_prediction,
-                                                           titulo,
-                                                           enableDebug)
+        # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
+        titulo = "Matriz_Confucao_" + str(i)
+        matriz_de_confusion = calcular_matrix_de_confusion(y_test, coord_prediction, titulo, enableDebug)
 
         matriz_confusion_sumatoria = matriz_confusion_sumatoria + matriz_de_confusion
         vector_matriz_confusion.append(matriz_de_confusion)
@@ -226,17 +220,17 @@ def select_best_beam(enableDebug=False):
     # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
     titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA **"
     titulo_archivo = "matrix_de_confucion"
+    path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
+    imprimir_matriz_de_confucion(enableDebug, matriz_confusion_media, numero_de_grupos, path_confusion_matriz,
+                                 titulo_mc)
     print("\nAcuracia media = {:.2f}%".format(acuracia_media)
           + ";  dp = {:.2f}%".format(acuracia_desvio_padrao) +
           "\nTempo de entrenamento medio = {:.2f}ms".format(time_train_media * 1000) +
           ";  dp = {:.2f}ms".format(time_train_desvio_padrao * 1000) +
           "\nTempo de predição medio = {:.2f}ms".format(time_test_media * 1000) +
           ";  dp = {:.2f}ms".format(time_test_desvio_padrao * 1000))
-    path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
 
-    imprimir_matriz_de_confucion(enableDebug, matriz_confusion_media, numero_de_grupos, path_confusion_matriz,
-                                 titulo_mc)
-
+    # ----------------- IMPRIME MATRIZ DE CONFUSION DEL MEJOR MODELO -----------------------
     titulo_mc = "** Melhor Modelo **"
     titulo_archivo = "melhor_modelo"
     path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
@@ -244,7 +238,7 @@ def select_best_beam(enableDebug=False):
     coord_prediction, time_test = predict(x_test)
     matriz_de_confusion = calcular_matrix_de_confusion(y_test,
                                                        coord_prediction,
-                                                       "mc_" + titulo_archivo,
+                                                       titulo_archivo,
                                                        enableDebug)
     imprimir_matriz_de_confucion(enableDebug, matriz_de_confusion, numero_de_grupos, path_confusion_matriz,
                                  titulo_mc)
@@ -256,8 +250,6 @@ def imprimir_matriz_de_confucion(enableDebug, matriz_confusion, tamano, path_con
                                  titulo_figura):
     df_cm = pd.DataFrame(matriz_confusion, index=range(1, tamano + 1),
                          columns=range(1, tamano + 1))
-    if enableDebug:
-        print("matriz de confução media [actual][predicted]= \n", df_cm)
     pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_figura,
                                         nombreFigura=path_con_nombre_de_arvhivo, pred_val_axis='y')
 
@@ -269,7 +261,7 @@ def create_keras_model(numero_de_salidas):
     local_model.add(tf.keras.layers.Dense(4, activation=tf.nn.relu))
     local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
 
-    local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.1),
+    local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.01),
                         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                         metrics=['accuracy'])
     # local_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -329,10 +321,11 @@ def pearsonr_2D(x, y):
 # ------------------ MAIN -------------------#
 if __name__ == '__main__':
     tf.keras.backend.clear_session()
-    epocas = 20
+    epocas = 5
     batch_size = 32
     numero_de_antenas_por_grupo = 32
     numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
+    numero_experimentos = 10
     enableDebug = False
     enable_scale = True
 
