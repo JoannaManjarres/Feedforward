@@ -294,7 +294,7 @@ def create_keras_model(numero_de_salidas):
     return local_model
 
 
-def plot_input_data():
+def plot_input_output_relationship():
     global x_test
     global y_test
     global x_train
@@ -350,8 +350,11 @@ if __name__ == '__main__':
     epocas = 100
     batch_size = 100
     numero_experimentos = 2
-    enableDebug = False
+    enableDebug = True
     enable_scale = True
+
+    print('\n pre-processing output data ...')
+    process_and_save_output_beams(numero_de_antenas_por_grupo)
 
     print('\n Reading pre-processed data ...')
     x_train, x_test = read_inputs(debug=enableDebug)
@@ -361,20 +364,17 @@ if __name__ == '__main__':
         x_train = scaler.transform(x_train)
         x_test = scaler.transform(x_test)
 
-    print('\n Pearson correlation coefficient ...')
+
+    print('\n  input-output relationship ...')
     PCC = pearsonr_2_d(np.transpose(y_train), np.transpose(x_train))
     print("PCC = ", PCC)
-
-    print('\n pre-processing output data ...')
-    process_and_save_output_beams(numero_de_antenas_por_grupo)
+    plot_input_output_relationship()
 
     print('\n creating NN model ...')
     tf.keras.backend.clear_session()
     model = create_keras_model(numero_de_grupos)
     history = 0
 
-    # print('\n Plotting input data ...')
-    # plot_input_data()
 
     print('\n Selecting beam groups...')
     select_best_beam(enable_debug=enableDebug)
