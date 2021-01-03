@@ -1,5 +1,4 @@
 venv/
-.idea/
 final/code/.idea/
 final/code/beamSelection/__pycache__/
 final/code/preProcessing/__pycache__/
