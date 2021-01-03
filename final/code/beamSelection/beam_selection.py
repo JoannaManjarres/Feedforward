@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import datetime
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 import confusion_matrix_pretty_print as pretty
@@ -66,18 +67,21 @@ def toc():
 
 
 def trainning(x_train,
-              y_train):
+              y_train,
+              id):
     global model
     global epocas
     global batch_size
     global history
 
+    log_title = "logs/experimento_"+str(id)
     tic()
     # train using the input data
     history = model.fit(x_train, y_train,
                         epochs=epocas,
                         batch_size=batch_size,
                         verbose=1,
+                        callbacks=callback_tensorboard(log_title),
                         validation_split=0.2)
     return toc()
 
@@ -189,7 +193,7 @@ def select_best_beam(enable_debug=False):
 
         tf.keras.backend.clear_session()
         model = create_keras_model(numero_de_grupos)
-        time_train = trainning(x_train, y_train)
+        time_train = trainning(x_train, y_train, i)
 
         coord_prediction, time_test = predict(x_test)
 
