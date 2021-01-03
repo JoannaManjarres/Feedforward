@@ -287,7 +287,8 @@ def create_keras_model(numero_de_salidas):
     local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
 
     local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.01),
-                        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='sum'),
+                        # loss=tf.keras.losses.mean_squared_logarithmic_error(),
                         metrics=['accuracy'])
     # local_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
@@ -350,7 +351,7 @@ if __name__ == '__main__':
     epocas = 100
     batch_size = 100
     numero_experimentos = 2
-    enableDebug = True
+    enableDebug = False
     enable_scale = True
 
     print('\n pre-processing output data ...')
