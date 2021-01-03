@@ -13,13 +13,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
-import confusion_matrix_pretty_print as pretty
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
-from mlxtend.plotting import plot_decision_regions
+import confusion_matrix_pretty_print as pretty
+
 
 sys.path.append('../preProcessing/')
 from pre_processing_baseline_output import process_and_save_output_beams
+from my_decision_regions import plot_decision_regions
 
 
 def read_labels_data(debug=False):
@@ -167,15 +168,17 @@ def select_best_beam(enableDebug=False):
     global model
     global history
     global numero_experimentos
+    global epocas
 
     # config parameters
     if enableDebug:
         numero_experimentos = 2
+        epocas = 4
 
     path_result = "../../results/"
 
     vector_acuracia = []
-    acuracia_max = 0.0
+    acuracia_max = -100.0
     vector_time_test = []
     vector_time_train = []
     vector_matriz_confusion = []
@@ -248,7 +251,7 @@ def select_best_beam(enableDebug=False):
     imprimir_matriz_de_confucion(enableDebug, matriz_de_confusion, numero_de_grupos, path_confusion_matriz,
                                  titulo_mc)
 
-    plot_trainning_history()
+
 
 
 def plot_trainning_history():
@@ -351,7 +354,7 @@ if __name__ == '__main__':
     epocas = 100
     batch_size = 100
     numero_experimentos = 2
-    enableDebug = False
+    enableDebug = True
     enable_scale = True
 
     print('\n Reading pre-processed data ...')
@@ -379,6 +382,9 @@ if __name__ == '__main__':
 
     print('\n Selecting beam groups...')
     select_best_beam(enableDebug=enableDebug)
+
+    print('\n Ploting trainning results...')
+    plot_trainning_history()
 
     plot_decision_regions(x_test, y_test, clf=model, legend=2)
     plt.show()
