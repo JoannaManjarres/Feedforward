@@ -71,10 +71,11 @@ def trainning(x_train,
     global model
     global epocas
     global batch_size
+    global history
 
     tic()
     # train using the input data
-    model.fit(x_train, y_train,
+    history = model.fit(x_train, y_train,
               epochs=epocas,
               batch_size=batch_size,
               verbose=1,
@@ -164,6 +165,7 @@ def select_best_beam(enableDebug=False):
     global y_train
     global y_test
     global model
+    global history
     global numero_experimentos
 
     # config parameters
@@ -179,6 +181,7 @@ def select_best_beam(enableDebug=False):
     vector_matriz_confusion = []
     matriz_confusion_sumatoria = np.zeros((numero_de_grupos, numero_de_grupos), dtype=float)
     best_model = model
+    best_history = history
 
     for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
         print("\n\n >> Experimento: " + str(i))
@@ -208,8 +211,10 @@ def select_best_beam(enableDebug=False):
         if acuracia > acuracia_max:
             acuracia_max = acuracia
             best_model = model
+            best_history = history
 
     model = best_model
+    history = best_history
 
     # ----------------- CALCULA ESTADISTICAS -----------------------
     [acuracia_media, acuracia_desvio_padrao] = calculo_desvio_padrao(vector_acuracia)
@@ -230,7 +235,7 @@ def select_best_beam(enableDebug=False):
           "\nTempo de predição medio = {:.2f}ms".format(time_test_media * 1000) +
           ";  dp = {:.2f}ms".format(time_test_desvio_padrao * 1000))
 
-    # ----------------- IMPRIME MATRIZ DE CONFUSION DEL MEJOR MODELO -----------------------
+    # ----------------- RESULTADOS PARA EL MEJOR MODELO -----------------------
     titulo_mc = "** Melhor Modelo **"
     titulo_archivo = "melhor_modelo"
     path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
@@ -243,7 +248,28 @@ def select_best_beam(enableDebug=False):
     imprimir_matriz_de_confucion(enableDebug, matriz_de_confusion, numero_de_grupos, path_confusion_matriz,
                                  titulo_mc)
 
+    plot_trainning_history()
 
+
+def plot_trainning_history():
+    global history
+
+    # summarize history for accuracy
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
+    # summarize history for loss
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
 
 
 def imprimir_matriz_de_confucion(enableDebug, matriz_confusion, tamano, path_con_nombre_de_arvhivo,
@@ -320,12 +346,11 @@ def pearsonr_2D(x, y):
 
 # ------------------ MAIN -------------------#
 if __name__ == '__main__':
-    tf.keras.backend.clear_session()
-    epocas = 5
-    batch_size = 32
     numero_de_antenas_por_grupo = 32
     numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
-    numero_experimentos = 10
+    epocas = 100
+    batch_size = 100
+    numero_experimentos = 2
     enableDebug = False
     enable_scale = True
 
@@ -345,7 +370,9 @@ if __name__ == '__main__':
     process_and_save_output_beams(numero_de_antenas_por_grupo)
 
     print('\n creating NN model ...')
+    tf.keras.backend.clear_session()
     model = create_keras_model(numero_de_grupos)
+    history = 0
 
     # print('\n Plotting input data ...')
     # plot_input_data()
