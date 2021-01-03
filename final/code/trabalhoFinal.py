@@ -14,11 +14,15 @@ from keras.optimizers import SGD
 def read_labels_data(debug=False):
     if(debug):
          labelPath = "../data/processed/output_beam/debug/"
+         print(labelPath)
     else:
         labelPath = "../data/processed/output_beam/"
+        print(labelPath)
     
     input_cache_file = np.load(labelPath+"beams_output_train.npz")
+ 
     label_train = input_cache_file["output_training"]
+    
                                           
     input_cache_file = np.load(labelPath+"beams_output_validation.npz")
     label_validation = input_cache_file["output_test"]
@@ -65,16 +69,22 @@ def simple_network(input_train,label_train, input_validation, label_validation):
                   metrics=['accuracy'])
               # loss='sparse_categorical_crossentropy',
               
-    history = model.fit(input_train, label_train, epochs=5)
-    val_loss, val_acc = model.evaluate(input_validation, label_validation)
-    print(val_loss, val_acc)
-    
+    history = model.fit(input_train, label_train, epochs=5, validation_split=.1)
+    # val_loss, val_acc = model.evaluate(input_validation, label_validation, verbose=False)
+    model.evaluate(input_validation, label_validation, verbose=False)
+    # loss, accuracy = model.evaluate(x_test, y_test, verbose=False)
+    # print(val_loss, val_acc)
+
     plt.plot(history.history['accuracy'])
-    # plt.plot(history.history['val_acc'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('model accuracy')
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
+    plt.legend(['training', 'validation'], loc='best')
     plt.show()
 
+
+tf.keras.backend.clear_session()
 input_train,input_validation = read_inputs(debug=False)
 label_train,label_validation = read_labels_data(debug=False)
 simple_network(input_train,label_train, input_validation, label_validation)  
