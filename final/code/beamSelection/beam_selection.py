@@ -350,7 +350,7 @@ if __name__ == '__main__':
     epocas = 100
     batch_size = 100
     numero_experimentos = 2
-    enableDebug = True
+    enableDebug = False
     enable_scale = True
 
     print('\n Reading pre-processed data ...')
