@@ -7,16 +7,18 @@ Created on Sun Jul 12 10:45:28 2020
 """
 import timeit
 import sys
-import csv
 import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
 import confusion_matrix_pretty_print as pretty
 
 sys.path.append('../preProcessing/')
 from pre_processing_baseline_output import process_and_save_output_beams
+from my_decision_regions import plot_decision_regions
 
 
 def read_labels_data(debug=False):
@@ -63,25 +65,30 @@ def toc():
     return toc_s - tic_s
 
 
-def neural_network(x_train,
-                   y_train,
-                   x_validation):
+def trainning(x_train,
+              y_train):
     global model
+    global epocas
+    global batch_size
+    global history
 
-    print('\n Training NN ...')
     tic()
     # train using the input data
-    model.fit(x_train, y_train, epochs=1)
+    history = model.fit(x_train, y_train,
+                        epochs=epocas,
+                        batch_size=batch_size,
+                        verbose=1,
+                        validation_split=0.2)
+    return toc()
 
-    tiempo_entrenamiento_ms = toc()
 
-    print('\n Selecting Beams using NN ...')
+def predict(x_validation):
+    global model
+
     tic()
-    # classify some data
     y_validation = np.argmax(model.predict(x_validation), axis=-1)
-    tiempo_test_ms = toc()
 
-    return y_validation, tiempo_entrenamiento_ms, tiempo_test_ms
+    return y_validation, toc()
 
 
 def calular_acuracia(label_val, out_net):
@@ -115,9 +122,8 @@ def calculo_desvio_padrao(input_vector):
 def calcular_matrix_de_confusion(labels_de_test,
                                  salida_predecida_por_la_red,
                                  titulo,
-                                 enableDebug):
+                                 enable_debug_flag):
     global numero_de_grupos
-    # plotMatrizDeConfusion = False
 
     matriz_de_confusion = np.zeros((numero_de_grupos, numero_de_grupos), dtype=int)
 
@@ -127,19 +133,8 @@ def calcular_matrix_de_confusion(labels_de_test,
 
         matriz_de_confusion[actual][predicted] = matriz_de_confusion[actual][predicted] + 1
 
-    if enableDebug:
+    if enable_debug_flag:
         print(titulo, "[actual][predicted]", "\n", matriz_de_confusion)
-
-    # path_result = "../../results/"
-    # np.savetxt('confusionMatrix/'+str(nombre_del_experimento)+ \
-    #   '/MC_'+nombre_del_experimento+str(numero_del_experimento)+ \
-    #   '_'+str(numero_de_la_matriz) +'.csv', matriz_de_confusion_prueba, \
-    #   delimiter=',', fmt='%d')
-
-    # np.savetxt(path_result+nombre_arq_MC, matriz_de_confusion, delimiter=',', fmt='%d')
-    # if(plotMatrizDeConfusion):
-    #     df_cm = pd.DataFrame(matriz_de_confusion, index=range(0,10), columns=range(0,10))
-    #     pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues',title=titulo)
 
     return matriz_de_confusion
 
@@ -162,54 +157,65 @@ def plotar_resultados(x_vector,
     plt.savefig(ruta, dpi=300, bbox_inches='tight')
 
 
-def select_best_beam(enableDebug=False):
+def select_best_beam(enable_debug=False):
     global numero_de_grupos
-
-    print('\n Reading pre-processed data ...')
-    coord_input_train, coord_input_validation = read_inputs(debug=enableDebug)  # coordenadas
-    coord_label_train, coord_label_validation = read_labels_data(debug=enableDebug)
+    global x_train
+    global x_test
+    global y_train
+    global y_test
+    global model
+    global history
+    global numero_experimentos
+    global epocas
 
     # config parameters
-    if enableDebug:
+    if enable_debug:
         numero_experimentos = 2
-    else:
-        numero_experimentos = 1
+        epocas = 4
 
     path_result = "../../results/"
 
     vector_acuracia = []
+    acuracia_max = -100.0
     vector_time_test = []
     vector_time_train = []
     vector_matriz_confusion = []
     matriz_confusion_sumatoria = np.zeros((numero_de_grupos, numero_de_grupos), dtype=float)
+    best_model = model
+    best_history = history
 
     for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
         print("\n\n >> Experimento: " + str(i))
 
-        coord_prediction, time_train, time_test = neural_network(coord_input_train,
-                                                                 coord_label_train,
-                                                                 coord_input_validation)
+        tf.keras.backend.clear_session()
+        model = create_keras_model(numero_de_grupos)
+        time_train = trainning(x_train, y_train)
 
+        coord_prediction, time_test = predict(x_test)
+
+        if enable_debug:
+            print("coord_label_validation = \n", y_test)
+            print("coord_prediction = \n", coord_prediction)
 
         # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
         titulo = "Matriz_Confucao_" + str(i)
-
-        if enableDebug:
-            print("coord_label_validation = \n", coord_label_validation)
-            print("coord_prediction = \n", coord_prediction)
-
-        matriz_de_confusion = calcular_matrix_de_confusion(coord_label_validation,
-                                                           coord_prediction,
-                                                           titulo,
-                                                           enableDebug)
+        matriz_de_confusion = calcular_matrix_de_confusion(y_test, coord_prediction, titulo, enable_debug)
 
         matriz_confusion_sumatoria = matriz_confusion_sumatoria + matriz_de_confusion
         vector_matriz_confusion.append(matriz_de_confusion)
 
-        acuracia = calular_acuracia(coord_label_validation, coord_prediction)
+        acuracia = calular_acuracia(y_test, coord_prediction)
         vector_acuracia.append(acuracia)
         vector_time_train.append(time_train)
         vector_time_test.append(time_test)
+
+        if acuracia > acuracia_max:
+            acuracia_max = acuracia
+            best_model = model
+            best_history = history
+
+    model = best_model
+    history = best_history
 
     # ----------------- CALCULA ESTADISTICAS -----------------------
     [acuracia_media, acuracia_desvio_padrao] = calculo_desvio_padrao(vector_acuracia)
@@ -220,36 +226,161 @@ def select_best_beam(enableDebug=False):
     # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
     titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA **"
     titulo_archivo = "matrix_de_confucion"
-    df_cm = pd.DataFrame(matriz_confusion_media, index=range(1, numero_de_grupos + 1),
-                         columns=range(1, numero_de_grupos + 1))
     path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
-    if enableDebug:
-        print("matriz de confução media [actual][predicted]= \n", df_cm)
-    pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_mc, nombreFigura=path_confusion_matriz, \
-                                        pred_val_axis='y')
+    imprimir_matriz_de_confucion(matriz_confusion_media, numero_de_grupos, path_confusion_matriz,
+                                 titulo_mc)
+    print("\nAcuracia media = {:.2f}%".format(acuracia_media)
+          + ";  dp = {:.2f}%".format(acuracia_desvio_padrao) +
+          "\nTempo de entrenamento medio = {:.2f}ms".format(time_train_media * 1000) +
+          ";  dp = {:.2f}ms".format(time_train_desvio_padrao * 1000) +
+          "\nTempo de predição medio = {:.2f}ms".format(time_test_media * 1000) +
+          ";  dp = {:.2f}ms".format(time_test_desvio_padrao * 1000))
 
-    return coord_input_train, coord_input_validation, coord_label_train, coord_label_validation, coord_prediction, df_cm
+    # ----------------- RESULTADOS PARA EL MEJOR MODELO -----------------------
+    titulo_mc = "** Melhor Modelo **"
+    titulo_archivo = "melhor_modelo"
+    path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
+
+    coord_prediction, time_test = predict(x_test)
+    matriz_de_confusion = calcular_matrix_de_confusion(y_test,
+                                                       coord_prediction,
+                                                       titulo_archivo,
+                                                       enable_debug)
+    imprimir_matriz_de_confucion(matriz_de_confusion, numero_de_grupos, path_confusion_matriz,
+                                 titulo_mc)
+
+
+def plot_trainning_history():
+    global history
+
+    # summarize history for accuracy
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
+    # summarize history for loss
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
+
+
+def imprimir_matriz_de_confucion(matriz_confusion, tamano, path_con_nombre_de_arvhivo,
+                                 titulo_figura):
+    df_cm = pd.DataFrame(matriz_confusion, index=range(1, tamano + 1),
+                         columns=range(1, tamano + 1))
+    pretty.pretty_plot_confusion_matrix(df_cm, cmap='Blues', title=titulo_figura,
+                                        nombreFigura=path_con_nombre_de_arvhivo, pred_val_axis='y')
 
 
 def create_keras_model(numero_de_salidas):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
-    local_model.add(tf.keras.layers.Dense(1, activation=tf.nn.relu))
-    local_model.add(tf.keras.layers.Dense(numero_de_salidas+1, activation=tf.nn.softmax))
+    local_model.add(tf.keras.layers.Dense(2, activation=tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(4, activation=tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
 
-    local_model.compile(optimizer='adam',
+    local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.01),
                         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                         metrics=['accuracy'])
+    # local_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     return local_model
 
 
+def plot_input_data():
+    global x_test
+    global y_test
+    global x_train
+    global y_train
+
+    fig, axs = plt.subplots(1, 2)
+    fig.suptitle('Input data')
+
+    for i in range(2):
+        if i == 0:
+            coord_x = x_train[:, 0]
+            coord_y = x_train[:, 1]
+            beam_group = y_train
+            ax = axs[0]
+        else:
+            coord_x = x_test[:, 0]
+            coord_y = x_test[:, 1]
+            beam_group = y_test
+            ax = axs[1]
+
+        data_frame_test = pd.DataFrame(dict(coord_X=coord_x, coord_y=coord_y, beam_group=beam_group))
+        data_frame_test.head()
+
+        sns.scatterplot(data=data_frame_test,
+                        x="coord_X",
+                        y="coord_y",
+                        style="beam_group",
+                        sizes=(200, 200),
+                        size="beam_group",
+                        palette="deep",
+                        legend="full",
+                        hue="beam_group",
+                        ax=ax)
+    plt.show()
+
+
+def pearsonr_2_d(x, y):
+    """computes pearson correlation coefficient based on the equation above
+       where x is a 1D and y a 2D array"""
+
+    upper = np.sum((x - np.mean(x)) * (y - np.mean(y, axis=1)[:, None]), axis=1)
+    lower = np.sqrt(np.sum(np.power(x - np.mean(x), 2)) * np.sum(np.power(y - np.mean(y, axis=1)[:, None], 2), axis=1))
+
+    rho = upper / lower
+
+    return rho
+
+
 # ------------------ MAIN -------------------#
-k = 26
-process_and_save_output_beams(k)
-numero_de_grupos = round(256 / k)
-print("numero_de_grupos = ", numero_de_grupos)
+if __name__ == '__main__':
+    numero_de_antenas_por_grupo = 32
+    numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
+    epocas = 100
+    batch_size = 100
+    numero_experimentos = 2
+    enableDebug = False
+    enable_scale = True
 
-model = create_keras_model(numero_de_grupos)
+    print('\n Reading pre-processed data ...')
+    x_train, x_test = read_inputs(debug=enableDebug)
+    y_train, y_test = read_labels_data(debug=enableDebug)
+    if enable_scale:
+        scaler = StandardScaler().fit(x_train)
+        x_train = scaler.transform(x_train)
+        x_test = scaler.transform(x_test)
 
-select_best_beam(enableDebug=False)
+    print('\n Pearson correlation coefficient ...')
+    PCC = pearsonr_2_d(np.transpose(y_train), np.transpose(x_train))
+    print("PCC = ", PCC)
+
+    print('\n pre-processing output data ...')
+    process_and_save_output_beams(numero_de_antenas_por_grupo)
+
+    print('\n creating NN model ...')
+    tf.keras.backend.clear_session()
+    model = create_keras_model(numero_de_grupos)
+    history = 0
+
+    # print('\n Plotting input data ...')
+    # plot_input_data()
+
+    print('\n Selecting beam groups...')
+    select_best_beam(enable_debug=enableDebug)
+
+    print('\n Ploting trainning results...')
+    plot_trainning_history()
+
+    plot_decision_regions(x_test, y_test, clf=model, legend=2)
+    plt.show()

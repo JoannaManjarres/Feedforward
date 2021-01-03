@@ -301,7 +301,7 @@ if(__name__ == '__main__'):
     print('__main__')
     print('_test_cm: test function with confusion matrix done\nand pause')
     _test_cm()
-    # plt.pause(5)
-    # print('_test_data_class: test function with y_test (actual values) and predictions (predic)')
-    # _test_data_class()
+    plt.pause(5)
+    print('_test_data_class: test function with y_test (actual values) and predictions (predic)')
+    _test_data_class()
 
