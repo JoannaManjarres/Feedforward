@@ -251,7 +251,7 @@ def plot_decision_regions(X, y, clf,
 
     # Scatter training data samples
     # Make sure scatter_kwargs has backwards compatible defaults
-    scatter_kwargs_default = {'alpha': 0.8, 'edgecolor': 'none'}
+    scatter_kwargs_default = {'alpha': 0.4, 'edgecolor': 'none'}
     scatter_kwargs = format_kwarg_dictionaries(
                         default_kwargs=scatter_kwargs_default,
                         user_kwargs=scatter_kwargs,
@@ -278,7 +278,7 @@ def plot_decision_regions(X, y, clf,
                    c=colors[idx],
                    marker=next(marker_gen),
                    label=c,
-                   s=120,
+                   s=100,
                    **scatter_kwargs)
 
     if hide_spines:
