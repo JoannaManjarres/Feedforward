@@ -15,6 +15,8 @@ import tensorflow as tf
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 import confusion_matrix_pretty_print as pretty
+from keras import initializers
+
 
 sys.path.append('../preProcessing/')
 from pre_processing_baseline_output import process_and_save_output_beams
@@ -282,15 +284,18 @@ def imprimir_matriz_de_confucion(matriz_confusion, tamano, path_con_nombre_de_ar
 def create_keras_model(numero_de_salidas):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
-    local_model.add(tf.keras.layers.Dense(2, activation=tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(2, kernel_initializer=initializers.random_uniform(minval=-0.05,maxval=0.05, seed=None), activation=tf.nn.relu))
     local_model.add(tf.keras.layers.Dense(4, activation=tf.nn.relu))
     local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
 
-    local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.01),
-                        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='sum'),
+    local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.01) ,
+                        # optimizer=tf.optimizers.RMSprop(learning_rate=0.01, rho=0.9)
+                        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='sum_over_batch_size'),
                         # loss=tf.keras.losses.mean_squared_logarithmic_error(),
                         metrics=['accuracy'])
     # local_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    #
 
     return local_model
 
@@ -331,7 +336,26 @@ def plot_input_output_relationship():
                         ax=ax)
     plt.show()
 
+    # h_true = tf.histogram_fixed_width(y_test, value_range=(1,9), nbins=20)
+    # print(type(h_true))
+    plt.style.use('ggplot')
+    plt.hist(y_test, bins=20, rwidth=8, color='steelblue',alpha=0.5 )
+    plt.title("Labels")
 
+    num_intervals = round(np.sqrt(len(x_train[:,0])))
+    rango = max(x_train[:,0]) - min(x_train[:,0])
+    width_of_intervals = rango/num_intervals
+
+    plt.show()
+    plt.style.use('ggplot')
+    plt.hist(x_train[:,0], bins='scott', color='steelblue',alpha=0.5 )
+    plt.title("Coordenadas x")
+    plt.show()
+
+    plt.style.use('ggplot')
+    plt.hist(x_train[:, 1], bins='scott', color='steelblue',alpha=0.5 )
+    plt.title("Coordenadas y")
+    plt.show()
 def pearsonr_2_d(x, y):
     """computes pearson correlation coefficient based on the equation above
        where x is a 1D and y a 2D array"""
