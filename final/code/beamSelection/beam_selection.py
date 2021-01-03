@@ -8,7 +8,6 @@ Created on Sun Jul 12 10:45:28 2020
 import timeit
 import sys
 import math
-import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -16,7 +15,6 @@ import tensorflow as tf
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 import confusion_matrix_pretty_print as pretty
-
 
 sys.path.append('../preProcessing/')
 from pre_processing_baseline_output import process_and_save_output_beams
@@ -77,10 +75,10 @@ def trainning(x_train,
     tic()
     # train using the input data
     history = model.fit(x_train, y_train,
-              epochs=epocas,
-              batch_size=batch_size,
-              verbose=1,
-              validation_split=0.2)
+                        epochs=epocas,
+                        batch_size=batch_size,
+                        verbose=1,
+                        validation_split=0.2)
     return toc()
 
 
@@ -124,7 +122,7 @@ def calculo_desvio_padrao(input_vector):
 def calcular_matrix_de_confusion(labels_de_test,
                                  salida_predecida_por_la_red,
                                  titulo,
-                                 enableDebug):
+                                 enable_debug_flag):
     global numero_de_grupos
 
     matriz_de_confusion = np.zeros((numero_de_grupos, numero_de_grupos), dtype=int)
@@ -135,7 +133,7 @@ def calcular_matrix_de_confusion(labels_de_test,
 
         matriz_de_confusion[actual][predicted] = matriz_de_confusion[actual][predicted] + 1
 
-    if enableDebug:
+    if enable_debug_flag:
         print(titulo, "[actual][predicted]", "\n", matriz_de_confusion)
 
     return matriz_de_confusion
@@ -159,7 +157,7 @@ def plotar_resultados(x_vector,
     plt.savefig(ruta, dpi=300, bbox_inches='tight')
 
 
-def select_best_beam(enableDebug=False):
+def select_best_beam(enable_debug=False):
     global numero_de_grupos
     global x_train
     global x_test
@@ -171,7 +169,7 @@ def select_best_beam(enableDebug=False):
     global epocas
 
     # config parameters
-    if enableDebug:
+    if enable_debug:
         numero_experimentos = 2
         epocas = 4
 
@@ -195,13 +193,13 @@ def select_best_beam(enableDebug=False):
 
         coord_prediction, time_test = predict(x_test)
 
-        if enableDebug:
+        if enable_debug:
             print("coord_label_validation = \n", y_test)
             print("coord_prediction = \n", coord_prediction)
 
         # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
         titulo = "Matriz_Confucao_" + str(i)
-        matriz_de_confusion = calcular_matrix_de_confusion(y_test, coord_prediction, titulo, enableDebug)
+        matriz_de_confusion = calcular_matrix_de_confusion(y_test, coord_prediction, titulo, enable_debug)
 
         matriz_confusion_sumatoria = matriz_confusion_sumatoria + matriz_de_confusion
         vector_matriz_confusion.append(matriz_de_confusion)
@@ -229,7 +227,7 @@ def select_best_beam(enableDebug=False):
     titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA **"
     titulo_archivo = "matrix_de_confucion"
     path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
-    imprimir_matriz_de_confucion(enableDebug, matriz_confusion_media, numero_de_grupos, path_confusion_matriz,
+    imprimir_matriz_de_confucion(matriz_confusion_media, numero_de_grupos, path_confusion_matriz,
                                  titulo_mc)
     print("\nAcuracia media = {:.2f}%".format(acuracia_media)
           + ";  dp = {:.2f}%".format(acuracia_desvio_padrao) +
@@ -247,11 +245,9 @@ def select_best_beam(enableDebug=False):
     matriz_de_confusion = calcular_matrix_de_confusion(y_test,
                                                        coord_prediction,
                                                        titulo_archivo,
-                                                       enableDebug)
-    imprimir_matriz_de_confucion(enableDebug, matriz_de_confusion, numero_de_grupos, path_confusion_matriz,
+                                                       enable_debug)
+    imprimir_matriz_de_confucion(matriz_de_confusion, numero_de_grupos, path_confusion_matriz,
                                  titulo_mc)
-
-
 
 
 def plot_trainning_history():
@@ -275,7 +271,7 @@ def plot_trainning_history():
     plt.show()
 
 
-def imprimir_matriz_de_confucion(enableDebug, matriz_confusion, tamano, path_con_nombre_de_arvhivo,
+def imprimir_matriz_de_confucion(matriz_confusion, tamano, path_con_nombre_de_arvhivo,
                                  titulo_figura):
     df_cm = pd.DataFrame(matriz_confusion, index=range(1, tamano + 1),
                          columns=range(1, tamano + 1))
@@ -335,7 +331,7 @@ def plot_input_data():
     plt.show()
 
 
-def pearsonr_2D(x, y):
+def pearsonr_2_d(x, y):
     """computes pearson correlation coefficient based on the equation above
        where x is a 1D and y a 2D array"""
 
@@ -366,7 +362,7 @@ if __name__ == '__main__':
         x_test = scaler.transform(x_test)
 
     print('\n Pearson correlation coefficient ...')
-    PCC = pearsonr_2D(np.transpose(y_train), np.transpose(x_train))
+    PCC = pearsonr_2_d(np.transpose(y_train), np.transpose(x_train))
     print("PCC = ", PCC)
 
     print('\n pre-processing output data ...')
@@ -381,7 +377,7 @@ if __name__ == '__main__':
     # plot_input_data()
 
     print('\n Selecting beam groups...')
-    select_best_beam(enableDebug=enableDebug)
+    select_best_beam(enable_debug=enableDebug)
 
     print('\n Ploting trainning results...')
     plot_trainning_history()
