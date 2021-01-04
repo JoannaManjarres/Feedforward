@@ -292,12 +292,12 @@ def imprimir_matriz_de_confucion(matriz_confusion, tamano, path_con_nombre_de_ar
 def create_keras_model(numero_de_salidas):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
-    local_model.add(tf.keras.layers.Dense(9, kernel_initializer=initializers.random_normal(mean=0,stddev=0.5),
-                                          activation=tf.nn.tanh))
-                                          # activation = tf.nn.relu))
-    # local_model.add(tf.keras.layers.Dense(9, kernel_initializer=initializers.random_uniform(minval=-0.9,
-    #                                                                                         maxval=0.9, seed=None),
+    # local_model.add(tf.keras.layers.Dense(9, kernel_initializer=initializers.random_normal(mean=0,stddev=0.5),
     #                                       activation=tf.nn.tanh))
+                                          # activation = tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(9, kernel_initializer=initializers.random_uniform(minval=-0.2,
+                                                                                            maxval=0.2, seed=None),
+                                          activation=tf.nn.tanh))
     # local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.relu))
     local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
 
@@ -387,7 +387,7 @@ def pearsonr_2_d(x, y):
 if __name__ == '__main__':
     numero_de_antenas_por_grupo = 32
     numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
-    epocas = 100
+    epocas = 400
     batch_size = 100
     numero_experimentos = 2
     enableDebug = False
