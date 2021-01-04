@@ -13,6 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import seaborn as sns
+import os
 from sklearn.preprocessing import StandardScaler
 import confusion_matrix_pretty_print as pretty
 from keras import initializers
@@ -68,18 +69,26 @@ def toc():
 
 
 def trainning(x_train,
-              y_train):
+              y_train,
+              id):
     global model
     global epocas
     global batch_size
     global history
 
+    log_title = "logs/experimento_"+str(id)
     tic()
     # train using the input data
+
+    # log_dir = "results/log/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_dir = "../../results/logs/fit/experiment_" + str(id)
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
     history = model.fit(x_train, y_train,
                         epochs=epocas,
                         batch_size=batch_size,
                         verbose=1,
+                        callbacks=[tensorboard_callback],
                         validation_split=0.2)
     return toc()
 
@@ -191,7 +200,7 @@ def select_best_beam(enable_debug=False):
 
         tf.keras.backend.clear_session()
         model = create_keras_model(numero_de_grupos)
-        time_train = trainning(x_train, y_train)
+        time_train = trainning(x_train, y_train, i)
 
         coord_prediction, time_test = predict(x_test)
 
@@ -404,8 +413,12 @@ if __name__ == '__main__':
     print('\n Selecting beam groups...')
     select_best_beam(enable_debug=enableDebug)
 
-    print('\n Ploting trainning results...')
-    plot_trainning_history()
+    # print('\n Ploting trainning results...')
+    # plot_trainning_history()
 
-    plot_decision_regions(x_test, y_test, clf=model, legend=2)
-    plt.show()
+    # plot_decision_regions(x_test, y_test, clf=model, legend=2)
+    # plt.show()
+
+    print('\n Opening tensorboard...')
+    log_path = "../../results/logs/fit/"
+    os.system('tensorboard --logdir=' + log_path)
