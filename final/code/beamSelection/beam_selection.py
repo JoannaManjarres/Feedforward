@@ -294,9 +294,11 @@ def create_keras_model(numero_de_salidas):
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
     local_model.add(tf.keras.layers.Dense(2, kernel_initializer=initializers.random_uniform(minval=-0.05,
                                                                                             maxval=0.05, seed=None),
-                                          activation=tf.nn.relu))
-    local_model.add(tf.keras.layers.Dense(4, activation=tf.nn.relu))
-    local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
+                                          activation=tf.nn.tanh))
+                                          # activation = tf.nn.relu))
+    # local_model.add(tf.keras.layers.Dense(4, activation=tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.relu))
+    # local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
 
     local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.01),
                         # optimizer=tf.optimizers.RMSprop(learning_rate=0.01, rho=0.9)
@@ -402,10 +404,10 @@ if __name__ == '__main__':
         x_train = scaler.transform(x_train)
         x_test = scaler.transform(x_test)
 
-    print('\n  input-output relationship ...')
-    PCC = pearsonr_2_d(np.transpose(y_train), np.transpose(x_train))
-    print("PCC = ", PCC)
-    plot_input_output_relationship()
+    # print('\n  input-output relationship ...')
+    # PCC = pearsonr_2_d(np.transpose(y_train), np.transpose(x_train))
+    # print("PCC = ", PCC)
+    # plot_input_output_relationship()
 
     print('\n creating NN model ...')
     tf.keras.backend.clear_session()
@@ -424,4 +426,6 @@ if __name__ == '__main__':
     plt.show()
 
     print('\n Opening tensorboard...')
-    os.system('tensorboard --logdir=' + log_path)
+    print(log_path)
+    # os.system('conda activate tf')
+    os.system('tensorboard --logdir ' + log_path)
