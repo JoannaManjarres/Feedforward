@@ -292,13 +292,14 @@ def imprimir_matriz_de_confucion(matriz_confusion, tamano, path_con_nombre_de_ar
 def create_keras_model(numero_de_salidas):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
-    local_model.add(tf.keras.layers.Dense(2, kernel_initializer=initializers.random_uniform(minval=-0.05,
-                                                                                            maxval=0.05, seed=None),
+    local_model.add(tf.keras.layers.Dense(9, kernel_initializer=initializers.random_normal(mean=0,stddev=0.5),
                                           activation=tf.nn.tanh))
                                           # activation = tf.nn.relu))
-    # local_model.add(tf.keras.layers.Dense(4, activation=tf.nn.relu))
-    local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.relu))
-    # local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
+    # local_model.add(tf.keras.layers.Dense(9, kernel_initializer=initializers.random_uniform(minval=-0.9,
+    #                                                                                         maxval=0.9, seed=None),
+    #                                       activation=tf.nn.tanh))
+    # local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.relu))
+    local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
 
     local_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.01),
                         # optimizer=tf.optimizers.RMSprop(learning_rate=0.01, rho=0.9)
@@ -308,7 +309,6 @@ def create_keras_model(numero_de_salidas):
                         metrics=['accuracy'])
     # local_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-    #
 
     return local_model
 
@@ -418,6 +418,9 @@ if __name__ == '__main__':
     log_path = "../../results/logs/fit/"
     shutil.rmtree(log_path, ignore_errors=True)
     select_best_beam(enable_debug=enableDebug)
+
+    pesos = model.get_weights()
+    print(pesos)
 
     print('\n Ploting trainning results...')
     plot_trainning_history()
