@@ -167,7 +167,7 @@ def plotar_resultados(x_vector,
     plt.savefig(ruta, dpi=300, bbox_inches='tight')
 
 
-def select_best_beam(enable_debug=False):
+def select_best_beam(num_neuronios_entrada, enable_debug=False):
     global numero_de_grupos
     global x_train
     global x_test
@@ -198,7 +198,7 @@ def select_best_beam(enable_debug=False):
         print("\n\n >> Experimento: " + str(i))
 
         tf.keras.backend.clear_session()
-        model = create_keras_model(numero_de_grupos)
+        model = create_keras_model(numero_de_grupos,num_neuronios_entrada)
         time_train = trainning(x_train, y_train, i)
 
         coord_prediction, time_test = predict(x_test)
@@ -232,6 +232,8 @@ def select_best_beam(enable_debug=False):
     [time_train_media, time_train_desvio_padrao] = calculo_desvio_padrao(vector_time_train)
     [time_test_media, time_test_desvio_padrao] = calculo_desvio_padrao(vector_time_test)
     matriz_confusion_media = matriz_confusion_sumatoria / numero_experimentos
+    # plotar_resultados(acuracia_media,,acuracia_desvio_padrao,"Acuracia", "acuracia1", "Experimentos","acuracia","../../results/accuracy" )
+
 
     # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
     titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA **"
@@ -289,13 +291,13 @@ def imprimir_matriz_de_confucion(matriz_confusion, tamano, path_con_nombre_de_ar
                                         nombreFigura=path_con_nombre_de_arvhivo, pred_val_axis='y')
 
 
-def create_keras_model(numero_de_salidas):
+def create_keras_model(numero_de_salidas, num_neuronios_entrada):
     local_model = tf.keras.models.Sequential()
     # model.add(tf.keras.layers.Flatten(input_shape=(5750,))
     # local_model.add(tf.keras.layers.Dense(9, kernel_initializer=initializers.random_normal(mean=0,stddev=0.5),
     #                                       activation=tf.nn.tanh))
                                           # activation = tf.nn.relu))
-    local_model.add(tf.keras.layers.Dense(9, kernel_initializer=initializers.random_uniform(minval=-0.2,
+    local_model.add(tf.keras.layers.Dense(num_neuronios_entrada, kernel_initializer=initializers.random_uniform(minval=-0.2,
                                                                                             maxval=0.2, seed=None),
                                           activation=tf.nn.tanh))
     # local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.relu))
@@ -387,11 +389,12 @@ def pearsonr_2_d(x, y):
 if __name__ == '__main__':
     numero_de_antenas_por_grupo = 32
     numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
-    epocas = 400
+    epocas = 100
     batch_size = 100
     numero_experimentos = 2
     enableDebug = False
     enable_scale = True
+    num_neuronios_entrada = 9
 
     print('\n pre-processing output data ...')
     process_and_save_output_beams(numero_de_antenas_por_grupo)
@@ -411,13 +414,13 @@ if __name__ == '__main__':
 
     print('\n creating NN model ...')
     tf.keras.backend.clear_session()
-    model = create_keras_model(numero_de_grupos)
+    model = create_keras_model(numero_de_grupos,num_neuronios_entrada)
     history = 0
 
     print('\n Selecting beam groups...')
     log_path = "../../results/logs/fit/"
     shutil.rmtree(log_path, ignore_errors=True)
-    select_best_beam(enable_debug=enableDebug)
+    select_best_beam(num_neuronios_entrada, enable_debug=enableDebug)
 
     pesos = model.get_weights()
     print(pesos)
