@@ -156,7 +156,8 @@ def plotar_resultados(x_vector,
                       nombre_curva,
                       x_label,
                       y_label,
-                      ruta="figura.png"):
+                      ruta):
+
     plt.figure()
     plt.errorbar(x_vector, y_vector, yerr=desvio_padrao_vector, fmt='o', label=nombre_curva, capsize=5, ecolor='red')
 
@@ -186,58 +187,85 @@ def select_best_beam(num_neuronios_entrada, enable_debug=False):
     path_result = "../../results/"
 
     vector_acuracia = []
+    vetor_acuracia_media =[]
+    vetor_dp_acuracia_media =[]
     acuracia_max = -100.0
     vector_time_test = []
     vector_time_train = []
+    vetor_dp_time_train_media=[]
+    vetor_time_train_media = []
     vector_matriz_confusion = []
     matriz_confusion_sumatoria = np.zeros((numero_de_grupos, numero_de_grupos), dtype=float)
     best_model = model
     best_history = history
 
-    for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
-        print("\n\n >> Experimento: " + str(i))
+    for j in range(len(num_neuronios_entrada)):
+        for i in range(numero_experimentos):  # For encargado de ejecutar el numero de rodadas (experimentos)
+            print("\n\n >> Experimento: " + str(i))
 
-        tf.keras.backend.clear_session()
-        model = create_keras_model(numero_de_grupos,num_neuronios_entrada)
-        time_train = trainning(x_train, y_train, i)
+            tf.keras.backend.clear_session()
+            model = create_keras_model(numero_de_grupos,num_neuronios_entrada[j])
+            time_train = trainning(x_train, y_train, i)
 
-        coord_prediction, time_test = predict(x_test)
+            coord_prediction, time_test = predict(x_test)
 
-        if enable_debug:
-            print("coord_label_validation = \n", y_test)
-            print("coord_prediction = \n", coord_prediction)
+            if enable_debug:
+                print("coord_label_validation = \n", y_test)
+                print("coord_prediction = \n", coord_prediction)
 
-        # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
-        titulo = "Matriz_Confucao_" + str(i)
-        matriz_de_confusion = calcular_matrix_de_confusion(y_test, coord_prediction, titulo, enable_debug)
+            # #----------------- CALCULA MATRIZ DE CONFUSION -----------------------
+            titulo = "Matriz_Confusao_" + str(i)
+            matriz_de_confusion = calcular_matrix_de_confusion(y_test, coord_prediction, titulo, enable_debug)
 
-        matriz_confusion_sumatoria = matriz_confusion_sumatoria + matriz_de_confusion
-        vector_matriz_confusion.append(matriz_de_confusion)
+            matriz_confusion_sumatoria = matriz_confusion_sumatoria + matriz_de_confusion
+            vector_matriz_confusion.append(matriz_de_confusion)
 
-        acuracia = calular_acuracia(y_test, coord_prediction)
-        vector_acuracia.append(acuracia)
-        vector_time_train.append(time_train)
-        vector_time_test.append(time_test)
+            acuracia = calular_acuracia(y_test, coord_prediction)
+            vector_acuracia.append(acuracia)
+            vector_time_train.append(time_train)
+            vector_time_test.append(time_test)
 
-        if acuracia > acuracia_max:
-            acuracia_max = acuracia
-            best_model = model
-            best_history = history
+            if acuracia > acuracia_max:
+                acuracia_max = acuracia
+                best_model = model
+                best_history = history
 
-    model = best_model
-    history = best_history
+        model = best_model
+        history = best_history
 
-    # ----------------- CALCULA ESTADISTICAS -----------------------
-    [acuracia_media, acuracia_desvio_padrao] = calculo_desvio_padrao(vector_acuracia)
-    [time_train_media, time_train_desvio_padrao] = calculo_desvio_padrao(vector_time_train)
-    [time_test_media, time_test_desvio_padrao] = calculo_desvio_padrao(vector_time_test)
-    matriz_confusion_media = matriz_confusion_sumatoria / numero_experimentos
-    # plotar_resultados(acuracia_media,,acuracia_desvio_padrao,"Acuracia", "acuracia1", "Experimentos","acuracia","../../results/accuracy" )
+        # ----------------- CALCULA ESTADISTICAS -----------------------
+        [acuracia_media, acuracia_desvio_padrao] = calculo_desvio_padrao(vector_acuracia)
+        [time_train_media, time_train_desvio_padrao] = calculo_desvio_padrao(vector_time_train)
+        [time_test_media, time_test_desvio_padrao] = calculo_desvio_padrao(vector_time_test)
+        matriz_confusion_media = matriz_confusion_sumatoria / numero_experimentos
 
 
-    # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
+        vetor_acuracia_media.append(acuracia_media)
+        vetor_dp_acuracia_media.append(acuracia_desvio_padrao)
+        vetor_time_train_media.append(time_train_media)
+        vetor_dp_time_train_media.append(time_train_desvio_padrao)
+    print(vetor_acuracia_media)
+    plotar_resultados(num_neuronios_entrada,
+                      vetor_acuracia_media,
+                      vetor_dp_acuracia_media,
+                      "Acuracia",
+                      "acuracia",
+                      "Quantidade de neuronios",
+                      "acuracia",
+                      "../../results/accuracy/acuracia.png")
+
+    plotar_resultados(num_neuronios_entrada,
+                      vetor_time_train_media,
+                      vetor_dp_time_train_media,
+                      "Tempo de treinamento",
+                      "Time train",
+                      "Quantidade de neuronios",
+                      "Time train",
+                      "../../results/time_train/time_train.png")
+
+        # ----------------- IMPRIME MATRIZ DE CONFUSION MEDIA -----------------------
     titulo_mc = "** MATRIZ DE CONFUSÃO MÉDIA **"
-    titulo_archivo = "matrix_de_confucion"
+    titulo_archivo = "matrix_de_confusao"
     path_confusion_matriz = path_result + 'confusionMatrix/' + titulo_archivo + ".png"
     imprimir_matriz_de_confucion(matriz_confusion_media, numero_de_grupos, path_confusion_matriz,
                                  titulo_mc)
@@ -391,11 +419,11 @@ if __name__ == '__main__':
     numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
     epocas = 100
     batch_size = 100
-    numero_experimentos = 2
+    numero_experimentos = 10
     enableDebug = False
     enable_scale = True
-    num_neuronios_entrada = 9
-
+    num_neuronios_entrada = [1, 3, 5, 7, 9, 11, 15, 20, 25]
+    # num_neuronios_entrada = [1]
     print('\n pre-processing output data ...')
     process_and_save_output_beams(numero_de_antenas_por_grupo)
 
@@ -410,11 +438,11 @@ if __name__ == '__main__':
     # print('\n  input-output relationship ...')
     # PCC = pearsonr_2_d(np.transpose(y_train), np.transpose(x_train))
     # print("PCC = ", PCC)
-    # plot_input_output_relationship()
+    plot_input_output_relationship() #aqui descomentar
 
     print('\n creating NN model ...')
     tf.keras.backend.clear_session()
-    model = create_keras_model(numero_de_grupos,num_neuronios_entrada)
+    model = create_keras_model(numero_de_grupos,num_neuronios_entrada[0])
     history = 0
 
     print('\n Selecting beam groups...')
