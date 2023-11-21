@@ -1,8 +1,9 @@
 venv/
-final/code/.idea/
+final/code/.idea/*
 final/code/beamSelection/__pycache__/
 final/code/preProcessing/__pycache__/
 final/data/
+
 exemplos/FFNN/data/
 exemplos/Sonar/data/
 exemplos/gps/data/

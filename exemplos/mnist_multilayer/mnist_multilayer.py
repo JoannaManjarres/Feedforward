@@ -12,7 +12,7 @@ from __future__ import print_function
 # Import MNIST data
 import tensorflow as tf
 
-import  tensorflow.compat.v1 as tf
+import tensorflow.compat.v1 as tf
 # tf.compat.v1.disable_eager_execution()
 # tf.disable_v2_behavior()
 

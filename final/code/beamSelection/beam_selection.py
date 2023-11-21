@@ -15,12 +15,13 @@ import tensorflow as tf
 import seaborn as sns
 import os
 import shutil
+import csv
 from sklearn.preprocessing import StandardScaler
 import confusion_matrix_pretty_print as pretty
 from keras import initializers
 
 sys.path.append('../preProcessing/')
-from pre_processing_baseline_output import process_and_save_output_beams
+#from pre_processing_baseline_output import process_and_save_output_beams
 from my_decision_regions import plot_decision_regions
 
 
@@ -37,8 +38,6 @@ def read_labels_data(debug=False):
     label_validation = input_cache_file["output_test"]
 
     return label_train, label_validation
-
-
 def read_inputs(debug=False):
     if debug:
         input_path = "../../data/processed/coord_input/debug/"
@@ -52,6 +51,63 @@ def read_inputs(debug=False):
     validation_data = input_cache_file["coordinates_validation"]
 
     return train_data, validation_data
+
+
+def read_lidar():
+
+    #lidar_path = "../data/lidar/"
+    lidar_path = "/Users/joannamanjarres/git/Rede_Neural/data/lidar/"
+    input_cache_file = np.load(lidar_path + "lidar_train_raymobtime.npz", allow_pickle=True)
+    all_lidar_train = input_cache_file["input"]
+
+    input_cache_file = np.load(lidar_path + "lidar_validation_raymobtime.npz", allow_pickle=True)
+    all_lidar_test = input_cache_file["input"]
+
+    return all_lidar_train, all_lidar_test
+def read_coordinates():
+    #path = "/Users/joannamanjarres/git/Feedforward/data/coordinates/"
+    path="../../data/processed/coord_input/"
+    filename = "CoordVehiclesRxPerScene_s008.csv"
+    limit_ep_train = 1564
+
+    with open(path+filename) as csvfile:
+        reader = csv.DictReader (csvfile)
+        number_of_rows = len(list (reader))
+
+    all_info_coord_val = np.zeros([11194, 5], dtype=object)
+    all_coord = np.zeros([11194, 4], dtype=float)
+
+    with open(path+filename) as csvfile:
+        reader = csv.DictReader (csvfile)
+        cont = 0
+        for row in reader:
+            if row['Val'] == 'V':
+                all_info_coord_val[cont] = int(row['EpisodeID']), float (row['x']), float (row['y']), float (row['z']), row['LOS']
+                all_coord[cont] = int(row['EpisodeID']), float(row['x']), float(row['y']), float(row['z'])
+                cont += 1
+
+    data_train = all_coord[(all_info_coord_val[:, 0] < limit_ep_train + 1)]
+    data_test = all_coord[(all_info_coord_val[:, 0] > limit_ep_train)]
+
+    coord_train = data_train[:, [1, 2, 3]]
+    coord_test = data_test[:, [1, 2, 3]]
+
+    return coord_train, coord_test
+def read_beams():
+
+    #path = "/Users/joannamanjarres/git/Rede_Neural/data/beams/"
+    path = "../../data/processed/beams/"
+
+    input_cache_file = np.load (path + "index_beams_combined_train.npz", allow_pickle=True)
+    index_beam_train = input_cache_file["all_beam_combined_train"].astype(int)
+
+    input_cache_file = np.load (path + "index_beams_combined_test.npz", allow_pickle=True)
+    index_beam_test = input_cache_file["all_beam_combined_test"].astype(int)
+
+    return index_beam_train, index_beam_test
+
+
+
 
 
 # noinspection PyGlobalUndefined
@@ -295,9 +351,8 @@ def create_keras_model(numero_de_salidas):
     # local_model.add(tf.keras.layers.Dense(9, kernel_initializer=initializers.random_normal(mean=0,stddev=0.5),
     #                                       activation=tf.nn.tanh))
                                           # activation = tf.nn.relu))
-    local_model.add(tf.keras.layers.Dense(9, kernel_initializer=initializers.random_uniform(minval=-0.2,
-                                                                                            maxval=0.2, seed=None),
-                                          activation=tf.nn.tanh))
+    local_model.add(tf.keras.layers.Dense(128, kernel_initializer=initializers.random_uniform(minval=0, maxval=1, seed=None),
+                                                                                            activation=tf.nn.tanh))
     # local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.relu))
     local_model.add(tf.keras.layers.Dense(numero_de_salidas + 1, activation=tf.nn.log_softmax))
 
@@ -386,19 +441,30 @@ def pearsonr_2_d(x, y):
 # ------------------ MAIN -------------------#
 if __name__ == '__main__':
     numero_de_antenas_por_grupo = 32
-    numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
-    epocas = 400
+    #numero_de_grupos = round(256 / numero_de_antenas_por_grupo)
+    numero_de_grupos = 256
+    epocas = 100 #400
     batch_size = 100
     numero_experimentos = 2
     enableDebug = False
-    enable_scale = True
+    enable_scale = False
 
-    print('\n pre-processing output data ...')
-    process_and_save_output_beams(numero_de_antenas_por_grupo)
+    #print('\n pre-processing output data ...')
+    #process_and_save_output_beams(numero_de_antenas_por_grupo)
 
     print('\n Reading pre-processed data ...')
-    x_train, x_test = read_inputs(debug=enableDebug)
-    y_train, y_test = read_labels_data(debug=enableDebug)
+    #x_train, x_test = read_inputs(debug=enableDebug)
+    coord_train, coord_test = read_coordinates()
+    #y_train, y_test = read_labels_data(debug=enableDebug)
+    index_beam_train, index_beam_test = read_beams()
+
+
+    x_train = coord_train
+    x_test = coord_test
+
+    y_train = index_beam_train
+    y_test = index_beam_test
+
     if enable_scale:
         scaler = StandardScaler().fit(x_train)
         x_train = scaler.transform(x_train)
