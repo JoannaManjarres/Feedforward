@@ -8,3 +8,9 @@ exemplos/FFNN/data/
 exemplos/Sonar/data/
 exemplos/gps/data/
 final/results
+
+.DS_Store
+.gitignore
+final/.DS_Store
+final/code/.DS_Store
+final/code/beamSelection/.DS_Store
