@@ -5,6 +5,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras.callbacks import EarlyStopping
+from autokeras import StructuredDataClassifier
+from sklearn.model_selection import train_test_split
 
 
 from tensorflow.keras.layers import Flatten
@@ -90,7 +92,7 @@ def read_lidar():
         b = data_lidar_validation[i, :, :, :].reshape(1, dimension_of_coordenadas)
         all_data_validation[i] = b
 
-    return all_data_train, all_data_validation
+    return all_data_train, all_data_validation, data_lidar_train, data_lidar_validation
 
 def parameters_definition():
 
@@ -174,11 +176,11 @@ def model_feedforward(x_train, x_test, y_train, y_test, batch, neurons_input, ne
 
     local_model = tf.keras.models.Sequential()
 
-    local_model.add(keras.layers.InputLayer(input_shape=(x_train.shape[1])))
+    local_model.add(tf.keras.layers.InputLayer(input_shape=(x_train.shape[1])))
 
-    local_model.add(keras.layers.Dense(units=neurons_input, activation=activation_function_input)) #'relu' 'sigmoid'
+    local_model.add(tf.keras.layers.Dense(units=neurons_input, activation=activation_function_input)) #'relu' 'sigmoid'
     #local_model.add (keras.layers.Dense(units=512, activation='sigmoid'))
-    local_model.add(keras.layers.Dense(units=neurons_hidden, activation=activation_function_hidden))
+    local_model.add(tf.keras.layers.Dense(units=neurons_hidden, activation=activation_function_hidden))
     local_model.add(tf.keras.layers.Dense(256, activation=tf.keras.activations.softmax)) #activation=tf.nn.log_softmax
     local_model.summary()
     local_model.compile (optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.01), #   0.0001
@@ -307,7 +309,7 @@ def read_results_luan():
 
 def model_feedfoward_lidar(): #(batch, neurons_input, neurons_hidden, activation_function_input, activation_function_hidden):
     index_beam_train, index_beam_validation = read_beams()
-    lidar_train, lidar_validation = read_lidar()
+    lidar_train, lidar_validation, _, _ = read_lidar()
 
     x_train = lidar_train
     x_validation = lidar_validation
@@ -315,92 +317,207 @@ def model_feedfoward_lidar(): #(batch, neurons_input, neurons_hidden, activation
     y_validation = index_beam_validation
 
     batch = 200 # [10, 50, 100, 128, 256]
-    neurons_input = 1024 #[10, 25, 50, 128]
-    neurons_hidden = 512 #[128, 256, 512, 1024]
-    activation_function_input = 'relu' # ['relu', 'sigmoid']
-    activation_function_hidden = 'sigmoid' #['relu', 'sigmoid']
+    #neurons_input  = [32, 128, 256, 512, 1024, 2048, 4096]
+    #neurons_hidden = [32, 128, 256, 512, 1024, 2048, 4096]
+
+    neurons_input = 4096
+    neurons_hidden = [512, 1024, 2048, 4096]
+    neurons_hidden_1 = [32, 128, 256, 512, 1024, 2048, 4096]
+    taxa_aprendizado = [0.00001,]#[0.00001, 0.0001, 0.001, 0.01, 0.1]
+
+    layers_hidden = 1
+    activation_function_input = 'LeakyReLU' #'relu' 'LeakyReLU' # ['relu', 'sigmoid']
+    activation_function_hidden = ['relu', 'sigmoid', 'LeakyReLU']
+    activation_function_hidden_1 = ['relu', 'sigmoid', 'LeakyReLU']
+
+    if layers_hidden == 1:
+        ## Unica camada oculta
+        for i in range(len(taxa_aprendizado)):
+            epocas = 70
+            batch_size = batch  # 50 #128
+
+            local_model = tf.keras.models.Sequential()
+
+            local_model.add (tf.keras.layers.InputLayer(input_shape=(x_train.shape [1])))
+            local_model.add (
+                tf.keras.layers.Dense (units=neurons_input, activation=activation_function_input))  # 'relu' 'sigmoid'
+
+            # local_model.add(tf.keras.layers. (0.6))
+
+            local_model.add(tf.keras.layers.Dense(256, activation=tf.keras.activations.softmax))  # activation=tf.nn.log_softmax
+            local_model.summary()
+            local_model.compile(optimizer=tf.keras.optimizers.legacy.Adam (learning_rate=taxa_aprendizado[i]),
+                                 # overfitting 0.001  0.009988
+                                 loss=tf.keras.losses.SparseCategoricalCrossentropy (reduction='sum_over_batch_size'),
+                                 metrics=['accuracy'])
+            es = EarlyStopping(monitor='val_loss', patience=5)
+            history = local_model.fit (x_train,
+                                       y_train,
+                                       epochs=epocas,
+                                       batch_size=batch_size,
+                                       verbose=1,  # 1
+                                       validation_split=0.2)  # ,
+            # validation_data=(x_validation, y_validation),
+            # callbacks=[es])
+
+            y_predict = local_model.predict (x_validation)
+            y_predict_top_1 = np.argmax (y_predict, axis=-1)
+            accuracy = accuracy_score (y_validation, y_predict_top_1)
+
+            # y_predic_1 = local_model.predict_proba (x_test)
+
+            # print('Acuracia: ',accuracy_score(y_test, y_predict))
+            # print('Top 5: ',top_k_accuracy_score(y_test, local_model.predict (x_test), k=5))
+            # print (classification_report (y_test.argmax (axis=1),
+            #                              y_predict.argmax (axis=1)))
+            # target_names=[str (x) for x in lb.classes_]))
+
+            print ('Accuracy: ', accuracy)
+
+            title_accuracy = 'model accuracy  \n Feedforward: Lidar'
+            title_loss = 'model loss \n Feedforward: Lidar'
+            name = 'feedforward_lidar_hidden_layers_' \
+                   + str(layers_hidden) + \
+                   '_neurons_input_' + str (neurons_input) + \
+                   '_act_func_input_' + str (activation_function_input)+ \
+                    '_taxa_aprendizado_' + str (taxa_aprendizado[i])
+
+            plot_model_evolution(title_accuracy, title_loss, history, name_figure=name)
+
+            # preparing data for top k
+            y_predict_shorted = np.argsort (y_predict, axis=-1)
+            y_predict_index_shorted = np.flip (y_predict_shorted, axis=1)
+
+            calcular_top_k = False
+
+            if calcular_top_k:
+                top_5 = y_predict_index_shorted [:, :5]
+
+                top_k = [1, 5, 10, 20, 30, 40, 50]
+
+                acuracia = []
+
+                for i in range (len (top_k)):
+                    acerto = 0
+                    nao_acerto = 0
+                    for amostra_a_avaliar in range (len (y_predict_index_shorted)):
+                        group = np.array (y_predict_index_shorted) [:, 0:top_k [i]]
+                        if (y_validation [amostra_a_avaliar] in group [amostra_a_avaliar]):
+                            acerto = acerto + 1
+                        else:
+                            nao_acerto = nao_acerto + 1
+
+                    acuracia.append (acerto / len (y_predict_index_shorted))
+
+                print ('Top k', top_k)
+                print ('Acuracia', acuracia)
+
+                name = 'feedforward_lidar'
+                df_acuracia_comite_top_k = pd.DataFrame (acuracia)
+                path = '../../results/'
+                df_acuracia_comite_top_k.to_csv (path + 'acuracia_' + name + '_top_k.csv')
+
+            # save model to file
+        # model.save ('model.h5')
+
+    elif layers_hidden == 2:
+        ## VArias camadas ocultas
+        for i in range(len(neurons_input)):
+            for j in range(len(neurons_hidden)):
+                for k in range(len(activation_function_hidden)):
+                    for l in range(len(activation_function_hidden_1)):
+                        epocas = 150
+                        batch_size = batch  # 50 #128
+
+                        local_model = tf.keras.models.Sequential()
+
+                        local_model.add(tf.keras.layers.InputLayer(input_shape=(x_train.shape[1])))
+                        local_model.add(tf.keras.layers.Dense(units=neurons_input[i], activation = activation_function_input))  # 'relu' 'sigmoid'
+                        local_model.add(tf.keras.layers.Dense(units=neurons_hidden[j], activation=activation_function_hidden[k]))
+                        local_model.add(tf.keras.layers.Dense(units=neurons_hidden_1[l], activation=activation_function_hidden_1[l]))
 
 
+                        #local_model.add(tf.keras.layers.Dropout(0.6))
 
+                        #local_model.add (keras.layers.Dense(units=1024, activation='sigmoid'))
+                        #local_model.add (tf.keras.layers.Dense(units=neurons_hidden, activation=activation_function_hidden))
+                        local_model.add (tf.keras.layers.Dense(256, activation=tf.keras.activations.softmax))  # activation=tf.nn.log_softmax
+                        local_model.summary()
+                        local_model.compile(optimizer=tf.keras.optimizers.legacy.Adam (learning_rate=0.00001),  # overfitting 0.001  0.009988
+                                             loss=tf.keras.losses.SparseCategoricalCrossentropy(reduction='sum_over_batch_size'),
+                                             metrics=['accuracy'])
+                        es = EarlyStopping (monitor='val_loss', patience=5)
+                        history = local_model.fit (x_train,
+                                                   y_train,
+                                                   epochs=epocas,
+                                                   batch_size=batch_size,
+                                                   verbose=1,  # 1
+                                                   validation_split=0.2)#,
+                                                   #validation_data=(x_validation, y_validation),
+                                                   #callbacks=[es])
 
-    epocas = 70
-    batch_size = batch  # 50 #128
+                        y_predict = local_model.predict(x_validation)
+                        y_predict_top_1 = np.argmax(y_predict, axis=-1)
+                        accuracy = accuracy_score(y_validation, y_predict_top_1)
 
-    local_model = tf.keras.models.Sequential()
+                        # y_predic_1 = local_model.predict_proba (x_test)
 
-    local_model.add(tf.keras.layers.InputLayer(input_shape=(x_train.shape[1])))
-    local_model.add(tf.keras.layers.Dense(units=neurons_input, activation= activation_function_input))  # 'relu' 'sigmoid'
-    local_model.add(tf.keras.layers.Dropout(0.6))
+                        # print('Acuracia: ',accuracy_score(y_test, y_predict))
+                        # print('Top 5: ',top_k_accuracy_score(y_test, local_model.predict (x_test), k=5))
+                        # print (classification_report (y_test.argmax (axis=1),
+                        #                              y_predict.argmax (axis=1)))
+                        # target_names=[str (x) for x in lb.classes_]))
 
-    #local_model.add (keras.layers.Dense(units=1024, activation='sigmoid'))
-    #local_model.add (tf.keras.layers.Dense(units=neurons_hidden, activation=activation_function_hidden))
-    local_model.add (tf.keras.layers.Dense(256, activation=tf.keras.activations.softmax))  # activation=tf.nn.log_softmax
-    local_model.summary()
-    local_model.compile(optimizer=tf.keras.optimizers.legacy.Adam (learning_rate=0.009988),  # overfitting 0.001  0.009988
-                         loss=tf.keras.losses.SparseCategoricalCrossentropy(reduction='sum_over_batch_size'),
-                         metrics=['accuracy'])
-    es = EarlyStopping (monitor='val_loss', patience=5)
-    history = local_model.fit (x_train,
-                               y_train,
-                               epochs=epocas,
-                               batch_size=batch_size,
-                               verbose=1,  # 1
-                               validation_split=0.2,
-                               validation_data=(x_validation, y_validation),
-                               callbacks=[es])
+                        print ('Accuracy: ', accuracy)
 
-    y_predict = local_model.predict(x_validation)
-    y_predict_top_1 = np.argmax(y_predict, axis=-1)
-    accuracy = accuracy_score(y_validation, y_predict_top_1)
+                        title_accuracy = 'model accuracy  \n Feedforward: Lidar'
+                        title_loss = 'model loss \n Feedforward: Lidar'
+                        name = 'feedforward_lidar_hidden_layers_'\
+                               +str(layers_hidden)+\
+                               '_neurons_input_'+str(neurons_input[i])+\
+                               '_act_func_input_'+str(activation_function_input)+\
+                               '_neurons_hidden_'+str(neurons_hidden[j])+\
+                               '_act_func_hidden_'+str(activation_function_hidden[k]+ \
+                               '_neurons_hidden_1'+str(neurons_hidden_1[l])+ \
+                               '_act_func_hidden_' + '_act_func_hidden_1'+str(activation_function_hidden_1[l]))
 
-    # y_predic_1 = local_model.predict_proba (x_test)
+                        plot_model_evolution(title_accuracy, title_loss, history, name_figure=name)
 
-    # print('Acuracia: ',accuracy_score(y_test, y_predict))
-    # print('Top 5: ',top_k_accuracy_score(y_test, local_model.predict (x_test), k=5))
-    # print (classification_report (y_test.argmax (axis=1),
-    #                              y_predict.argmax (axis=1)))
-    # target_names=[str (x) for x in lb.classes_]))
+                        # preparing data for top k
+                        y_predict_shorted = np.argsort (y_predict, axis=-1)
+                        y_predict_index_shorted = np.flip (y_predict_shorted, axis=1)
 
-    print ('Accuracy: ', accuracy)
+                        calcular_top_k = False
 
-    title_accuracy = 'model accuracy  \n Feedforward: Lidar'
-    title_loss = 'model loss \n Feedforward: Lidar'
-    name = 'feedforward_lidar'
+                        if calcular_top_k:
+                            top_5 = y_predict_index_shorted[:, :5]
 
-    plot_model_evolution(title_accuracy, title_loss, history, name_figure=name)
+                            top_k = [1, 5, 10, 20, 30, 40, 50]
 
-    # preparing data for top k
-    y_predict_shorted = np.argsort (y_predict, axis=-1)
-    y_predict_index_shorted = np.flip (y_predict_shorted, axis=1)
+                            acuracia = []
 
-    top_5 = y_predict_index_shorted[:, :5]
+                            for i in range (len(top_k)):
+                                acerto = 0
+                                nao_acerto = 0
+                                for amostra_a_avaliar in range (len(y_predict_index_shorted)):
+                                    group = np.array (y_predict_index_shorted)[:, 0:top_k[i]]
+                                    if (y_validation[amostra_a_avaliar] in group[amostra_a_avaliar]):
+                                        acerto = acerto + 1
+                                    else:
+                                        nao_acerto = nao_acerto + 1
 
-    top_k = [1, 5, 10, 20, 30, 40, 50]
+                                acuracia.append (acerto / len (y_predict_index_shorted))
 
-    acuracia = []
+                            print ('Top k', top_k)
+                            print ('Acuracia', acuracia)
 
-    for i in range (len(top_k)):
-        acerto = 0
-        nao_acerto = 0
-        for amostra_a_avaliar in range (len(y_predict_index_shorted)):
-            group = np.array (y_predict_index_shorted)[:, 0:top_k[i]]
-            if (y_validation[amostra_a_avaliar] in group[amostra_a_avaliar]):
-                acerto = acerto + 1
-            else:
-                nao_acerto = nao_acerto + 1
+                            name = 'feedforward_lidar'
+                            df_acuracia_comite_top_k = pd.DataFrame(acuracia)
+                            path = '../../results/'
+                            df_acuracia_comite_top_k.to_csv (path + 'acuracia_' + name + '_top_k.csv')
 
-        acuracia.append (acerto / len (y_predict_index_shorted))
-
-    print ('Top k', top_k)
-    print ('Acuracia', acuracia)
-
-    name = 'feedforward_lidar'
-    df_acuracia_comite_top_k = pd.DataFrame (acuracia)
-    path = '../../results/'
-    df_acuracia_comite_top_k.to_csv (path + 'acuracia_' + name + '_top_k.csv')
-
-    # save model to file
-    #model.save ('model.h5')
+                        # save model to file
+                        #model.save ('model.h5')
 
 
     return accuracy, y_predict
@@ -414,9 +531,11 @@ def plot_model_evolution(title_accuracy, title_loss, history, name_figure):
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
     plt.legend(['training', 'validation'], loc='best')
-    plt.savefig(path + 'accuracy'+'_'+name_figure +'.png')
-    plt.show()
+    plt.savefig(path + 'acc'+'_'+name_figure +'.png')
+    #plt.show()
+    plt.clf()
 
+    #plt.figure()
 
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
@@ -425,12 +544,74 @@ def plot_model_evolution(title_accuracy, title_loss, history, name_figure):
     plt.xlabel('epoch')
     plt.legend(['training', 'validation'], loc='best')
     plt.savefig (path + 'loss' + '_' + name_figure + '.png')
-    plt.show()
+    #plt.show()
+    plt.clf ()
+    #plt.close(fig=name_figure)
+
+def model_convolutional():
+    print (tf.__version__)
+    _, _, all_data_train, all_data_test = read_lidar()
+    index_beam_train, index_beam_test = read_beams()
+
+    cnn_neural_network = tf.keras.models.Sequential()
+    cnn_neural_network.add(tf.keras.layers.Conv3D(5, (3, 3, 3), activation='relu', input_shape=(20, 200, 10, 1)))
+    cnn_neural_network.add(tf.keras.layers.MaxPooling3D(pool_size=(2, 2, 2)))
+    #cnn_neural_network.add(tf.keras.layers.Conv3D(64, (3, 3, 3), activation='relu', kernel_initializer='he_uniform'))
+    #cnn_neural_network.add(tf.keras.layers.MaxPooling3D(pool_size=(2, 2, 2)))
+    cnn_neural_network.add(tf.keras.layers.Flatten())
+    cnn_neural_network.add(tf.keras.layers.Dense(256, activation='relu', kernel_initializer='he_uniform'))
+    cnn_neural_network.add(tf.keras.layers.Dense(256, activation='softmax'))
+
+    cnn_neural_network.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(reduction='sum_over_batch_size'),
+                               optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.0001),
+                               metrics=['accuracy'])
+    history = cnn_neural_network.fit(all_data_train, index_beam_train, batch_size=100, epochs=50, verbose=1, validation_split=0.2)
+    score = cnn_neural_network.evaluate(all_data_test, index_beam_test, verbose=0)
+    print(f'Test loss: {score[0]} / Test accuracy: {score[1]}')
+
+    title_accuracy = 'model accuracy  \n CNN: Lidar'
+    title_loss = 'model loss \n CNN: Lidar'
+    name = 'CNN_lidar'
+
+    plot_model_evolution(title_accuracy=title_accuracy,
+                         title_loss=title_loss,
+                         history=history,
+                         name_figure=name)
+
+    a=0
+
+
+def auto_model():
+    all_data_train, all_data_test, _, _ = read_lidar()
+    index_beam_train, index_beam_test = read_beams()
+
+    X_train, X_test, y_train, y_test = train_test_split (all_data_train, index_beam_train, test_size=0.2, random_state=1)
+    print (X_train.shape, X_test.shape, y_train.shape, y_test.shape)
+
+    clf = StructuredDataClassifier(max_trials=3)
+    clf.fit(X_train, y_train)
+    loss, acc = clf.evaluate(X_test, y_test)
+    print('Accuracy: %3f' % acc)
+
+    index_beam_predict = clf.predict(all_data_test)
+    print ('Predicted: %.3f' % index_beam_predict[0])
+    # get the best performing model
+    model = clf.export_model ()
+    # summarize the loaded model
+    model.summary()
+
+
+
+    a=0
+
 
 
 #read_results_luan()
 #parameters_configuration_coord()
-#model_feedfoward_lidar()
-print(tf.__version__)
+model_feedfoward_lidar()
 
-parameters_definition()
+#auto_model()
+#model_convolutional()
+#print(tf.__version__)
+
+#parameters_definition()
