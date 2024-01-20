@@ -317,10 +317,10 @@ def model_feedfoward_lidar(): #(batch, neurons_input, neurons_hidden, activation
     y_validation = index_beam_validation
 
     batch = 200 # [10, 50, 100, 128, 256]
-    layers_hidden = 2
-    normalization = False
-    dropout_flag = False
-    dropout = 0.5
+    layers_hidden = 1
+    normalization = True
+    dropout_flag = True
+    dropout = 0.3
 
     neurons_input = [512]
     neurons_hidden = [1024] #[512, 1024, 2048, 4096]   [32]#
@@ -335,18 +335,27 @@ def model_feedfoward_lidar(): #(batch, neurons_input, neurons_hidden, activation
     if layers_hidden == 1:
         ## Unica camada oculta
         for i in range(len(neurons_hidden)):
-        #for i in range (len (taxa_aprendizado)):
-            epocas = 100
+
+            epocas = 150
             batch_size = batch  # 50 #128
 
             local_model = tf.keras.models.Sequential()
 
-            local_model.add (tf.keras.layers.InputLayer(input_shape=(x_train.shape [1])))
-            local_model.add(tf.keras.layers.Dropout(rate=dropout))
-            local_model.add (tf.keras.layers.Dense(units=neurons_input, activation=activation_function_input))  # 'relu' 'sigmoid'
+            # Camada de entrada
+            local_model.add(tf.keras.layers.InputLayer(input_shape=(x_train.shape [1])))
+            if dropout_flag:
+                local_model.add(tf.keras.layers.Dropout(rate=dropout))
+            if normalization:
+                local_model.add(tf.keras.layers.BatchNormalization())
 
-            # local_model.add(tf.keras.layers. (0.6))
+            # Camada Escondida
+            local_model.add(tf.keras.layers.Dense(units=neurons_input[i], activation=activation_function_input))  # 'relu' 'sigmoid'
+            if dropout_flag:
+                local_model.add(tf.keras.layers.Dropout(rate=dropout))
+            if normalization:
+                local_model.add(tf.keras.layers.BatchNormalization())
 
+            # Camada de saida
             local_model.add(tf.keras.layers.Dense(256, activation=tf.keras.activations.softmax))  # activation=tf.nn.log_softmax
             local_model.summary()
             local_model.compile(optimizer=tf.keras.optimizers.legacy.Adam (learning_rate=taxa_aprendizado[i]),
@@ -359,34 +368,38 @@ def model_feedfoward_lidar(): #(batch, neurons_input, neurons_hidden, activation
                                        epochs=epocas,
                                        batch_size=batch_size,
                                        verbose=1,  # 1
-                                       validation_split=0.2)  # ,
-            # validation_data=(x_validation, y_validation),
-            # callbacks=[es])
+                                       validation_split=0.2)
 
             y_predict = local_model.predict (x_validation)
             y_predict_top_1 = np.argmax (y_predict, axis=-1)
             accuracy = accuracy_score (y_validation, y_predict_top_1)
 
-            # y_predic_1 = local_model.predict_proba (x_test)
+            print('Accuracy: ', accuracy)
 
-            # print('Acuracia: ',accuracy_score(y_test, y_predict))
-            # print('Top 5: ',top_k_accuracy_score(y_test, local_model.predict (x_test), k=5))
-            # print (classification_report (y_test.argmax (axis=1),
-            #                              y_predict.argmax (axis=1)))
-            # target_names=[str (x) for x in lb.classes_]))
+            if dropout_flag:
+                title_accuracy = 'model accuracy with Dropout  \n Feedforward: Lidar'
+                title_loss = 'model loss with Dropout \n Feedforward: Lidar'
+                path = '../../results/feedforward/' + str(layers_hidden) + '_hidden_layers/dropout/rate_' + str(dropout) + '/'
+                name = 'feedforward_lidar_Dropout_' + str(layers_hidden) + '_hidden_layers_' \
+                       '_neu_input_' + str(neurons_input [i]) + \
+                       '_func_input_' + str(activation_function_input)
+            if normalization:
+                title_accuracy = 'model accuracy with Dropout and batch normalization \n Feedforward: Lidar'
+                title_loss = 'model loss with Dropout and batch normalization \n Feedforward: Lidar'
+                path = '../../results/feedforward/' + str(layers_hidden) + '_hidden_layers/dropout/rate_' + str(dropout) + '/batch_normalization/'
+                name = 'feedforward_lidar_Dropout_Batch' + str(layers_hidden) + '_hidden_layers_' \
+                       '_neu_input_' + str(neurons_input[i]) + \
+                       '_func_input_' + str(activation_function_input)
+            if dropout_flag == False and normalization == False:
+                title_accuracy = 'model accuracy \n Feedforward: Lidar'
+                title_loss = 'model loss \n Feedforward: Lidar'
+                path = '../../results/feedforward/' + str(layers_hidden) + '_hidden_layers/'
+                name = 'feedforward_lidar_' + str(layers_hidden) + '_hidden_layers_' \
+                       '_neu_input_' + str(neurons_input[i]) + \
+                       '_func_input_' + str(activation_function_input)
 
-            print ('Accuracy: ', accuracy)
 
-            title_accuracy = 'model accuracy  \n Feedforward: Lidar'
-            title_loss = 'model loss \n Feedforward: Lidar'
-            name = 'feedforward_lidar_hidden_layers_' \
-                   + str(layers_hidden) + \
-                   '_neurons_input_' + str (neurons_input) + \
-                   '_act_func_input_' + str (activation_function_input)+ \
-                    '_taxa_aprendizado_' + str (taxa_aprendizado[i])+ \
-                    'with_dropout' + str(dropout)
-
-            plot_model_evolution(title_accuracy, title_loss, history, name_figure=name)
+            plot_model_evolution(title_accuracy, title_loss, history, name_figure=name, path_1=path)
 
             # preparing data for top k
             y_predict_shorted = np.argsort (y_predict, axis=-1)
