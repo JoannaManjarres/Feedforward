@@ -62,6 +62,31 @@ def read_beams():
 
     return index_beam_train, index_beam_test
 
+
+def read_beams_ref_6():
+    path = "../../data/processed/beams/ref_6/"
+
+    input_cache_file = np.load(path + "beams_output_train.npz", allow_pickle=True)
+    index_beam_train = input_cache_file["output_classification"].astype (int)
+    # a = list(input_cache_file.keys()) -> como conhecer as chaves do arquivo
+
+    input_cache_file = np.load (path + "beams_output_test.npz", allow_pickle=True)
+    index_beam_test = input_cache_file ["output_classification"].astype (int)
+
+    input_cache_file = np.load (path + "beams_output_validation.npz", allow_pickle=True)
+    index_beam_validation = input_cache_file ["output_classification"].astype (int)
+
+    path_coord = "../../data/processed/coord_input/ref_6/"
+    input_cache_file = np.load (path_coord + "coord_train.npz", allow_pickle=True)
+    coord_train = input_cache_file ["coordinates"].astype (int)
+    #a = list(input_cache_file.keys()) #-> como conhecer as chaves do arquivo
+
+    path_lidar = "../../data/processed/lidar/ref_6/"
+    input_cache_file = np.load (path_lidar + "lidar_train.npz", allow_pickle=True)
+    lidar_train = input_cache_file ["input"].astype (int)
+    #a = list(input_cache_file.keys()) #-> como conhecer as chaves do arquivo
+    a=0
+
 def read_lidar():
     path = "../../data/processed/lidar/"
 
@@ -748,6 +773,28 @@ def model_convolutional():
 
     a=0
 
+def CONV2D_model():
+    _, _, all_data_train, all_data_test = read_lidar ()
+    index_beam_train, index_beam_test = read_beams ()
+
+
+    sample_train = len(all_data_train)
+    sample_test = len(all_data_test)
+
+    new_all_data_train = np.zeros([sample_train, 20, 200], dtype=np.int8)
+    test_matriz = np.zeros([20, 200], dtype=np.int8)
+
+    for var in range(0, 20):
+        test_matriz[var,:] = all_data_train[1, var, :, 0]
+
+
+    for i in range(0, sample_train):
+        for j in range(0,20):
+            new_all_data_train[i,j,:] = all_data_train[i,j,:,0]
+
+
+    a = 0
+
 
 def auto_model():
     all_data_train, all_data_test, _, _ = read_lidar()
@@ -776,8 +823,9 @@ def auto_model():
 
 #read_results_luan()
 #parameters_configuration_coord()
-model_feedfoward_lidar()
-
+#model_feedfoward_lidar()
+read_beams_ref_6()
+CONV2D_model()
 #auto_model()
 #model_convolutional()
 #print(tf.__version__)
